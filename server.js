@@ -63,7 +63,7 @@ app.put('/api/products/:id', async (req, res) => {
   const { name, category, price, stock } = req.body;
   try {
     const result = await pool.query(
-      'UPDATE products SET name=, category=, price=, stock= WHERE id= RETURNING *',
+      'UPDATE products SET name=\, category=\, price=\, stock=\ WHERE id=\ RETURNING *',
       [name, category, price, stock, id]
     );
     res.json(result.rows[0]);
@@ -76,7 +76,7 @@ app.put('/api/products/:id', async (req, res) => {
 app.delete('/api/products/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    await pool.query('DELETE FROM products WHERE id=', [id]);
+    await pool.query('DELETE FROM products WHERE id=\', [id]);
     res.json({ message: 'Product deleted' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -90,7 +90,7 @@ app.post('/api/orders', async (req, res) => {
   const { customer_name, items, subtotal, tax, total } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO orders (customer_name, items, subtotal, tax, total, created_at) VALUES (, , , , , NOW()) RETURNING *',
+      'INSERT INTO orders (customer_name, items, subtotal, tax, total, created_at) VALUES (\, \, \, \, \, NOW()) RETURNING *',
       [customer_name, JSON.stringify(items), subtotal, tax, total]
     );
     res.json(result.rows[0]);
@@ -113,7 +113,7 @@ app.get('/api/orders', async (req, res) => {
 app.delete('/api/orders/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    await pool.query('DELETE FROM orders WHERE id=', [id]);
+    await pool.query('DELETE FROM orders WHERE id=\', [id]);
     res.json({ message: 'Order deleted' });
   } catch (error) {
     res.status(500).json({ error: error.message });
