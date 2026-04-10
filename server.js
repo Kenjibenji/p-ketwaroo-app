@@ -10,6 +10,11 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Server is running' });
+});
+
 // PostgreSQL Connection - Uses DATABASE_URL from environment
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -118,3 +123,4 @@ app.delete('/api/orders/:id', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
