@@ -1,0 +1,424 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f5f5f5;
+}
+
+.app {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.header h1 {
+  font-size: 2.5em;
+  font-weight: 600;
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  background-color: white;
+  border-bottom: 2px solid #e0e0e0;
+  padding: 0 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.tab-button {
+  flex: 1;
+  padding: 15px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.3s ease;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+}
+
+.tab-button:hover {
+  background-color: #f9f9f9;
+  color: #667eea;
+}
+
+.tab-button.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+}
+
+.tab-content {
+  padding: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ===== PRODUCTS TAB ===== */
+.products-tab h2, .orders-tab h2, .history-tab h2 {
+  color: #333;
+  margin-bottom: 25px;
+  font-size: 1.8em;
+}
+
+.form-section {
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-section h3 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.form-section input {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 1em;
+  transition: border-color 0.3s ease;
+}
+
+.form-section input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+}
+
+.form-section button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 30px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: 500;
+  transition: transform 0.2s ease;
+  margin-right: 10px;
+}
+
+.form-section button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.form-section button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancel-btn {
+  background: #999 !important;
+}
+
+.products-list {
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.products-list h3 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead tr {
+  background-color: #f9f9f9;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+}
+
+td {
+  padding: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+.edit-btn, .delete-btn {
+  padding: 6px 12px;
+  margin-right: 8px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.edit-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.edit-btn:hover {
+  background-color: #45a049;
+}
+
+.delete-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+.delete-btn:hover {
+  background-color: #da190b;
+}
+
+/* ===== CREATE ORDER TAB ===== */
+.order-form {
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.order-form label {
+  display: block;
+  margin-top: 15px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+}
+
+.order-form input, .order-form select {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 1em;
+  transition: border-color 0.3s ease;
+}
+
+.order-form input:focus, .order-form select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+}
+
+.order-form h3 {
+  margin-top: 25px;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.order-item {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 120px;
+  gap: 12px;
+  margin-bottom: 15px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 5px;
+  align-items: end;
+}
+
+.order-item select, .order-item input {
+  margin-bottom: 0;
+}
+
+.order-item input:disabled {
+  background-color: #f0f0f0;
+  cursor: not-allowed;
+}
+
+.remove-btn {
+  background-color: #f44336;
+  color: white;
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.remove-btn:hover {
+  background-color: #da190b;
+}
+
+.add-item-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  margin-bottom: 20px;
+  transition: transform 0.2s ease;
+}
+
+.add-item-btn:hover {
+  transform: translateY(-2px);
+}
+
+.order-summary {
+  background-color: #f0f0f0;
+  padding: 20px;
+  border-radius: 5px;
+  margin: 20px 0;
+  border-left: 4px solid #667eea;
+}
+
+.order-summary p {
+  font-size: 1.1em;
+  margin: 10px 0;
+  color: #333;
+}
+
+.order-summary .total {
+  font-size: 1.3em;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.create-order-btn {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1.1em;
+  font-weight: 600;
+  transition: transform 0.2s ease;
+}
+
+.create-order-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.create-order-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===== ORDER HISTORY TAB ===== */
+.orders-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.order-card {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #667eea;
+  transition: transform 0.2s ease;
+}
+
+.order-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.order-card h4 {
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 1.2em;
+}
+
+.order-card p {
+  color: #666;
+  margin: 8px 0;
+  font-size: 0.95em;
+}
+
+.order-card .order-total {
+  font-size: 1.1em;
+  color: #667eea;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+.order-card details {
+  margin: 15px 0;
+}
+
+.order-card summary {
+  cursor: pointer;
+  color: #667eea;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.order-card ul {
+  margin-left: 20px;
+  color: #666;
+}
+
+.order-card li {
+  margin: 5px 0;
+}
+
+.order-card .delete-btn {
+  width: 100%;
+  padding: 10px;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .header h1 {
+    font-size: 1.8em;
+  }
+
+  .tabs {
+    flex-direction: column;
+  }
+
+  .tab-button {
+    border-bottom: none;
+    border-right: 3px solid transparent;
+  }
+
+  .tab-button.active {
+    border-bottom: none;
+    border-right-color: #667eea;
+  }
+
+  .order-item {
+    grid-template-columns: 1fr;
+  }
+
+  .orders-list {
+    grid-template-columns: 1fr;
+  }
+}
