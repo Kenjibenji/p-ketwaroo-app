@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const path = require('path');
@@ -16,7 +16,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-// PostgreSQL Connection - Uses DATABASE_URL from environment
+// PostgreSQL Connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
@@ -48,7 +48,7 @@ app.post('/api/products', async (req, res) => {
   const { name, category, price, stock } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO products (name, category, price, stock) VALUES (, , , ) RETURNING *',
+      'INSERT INTO products (name, category, price, stock) VALUES ($1, $2, $3, $4) RETURNING *',
       [name, category, price, stock]
     );
     res.json(result.rows[0]);
@@ -63,7 +63,7 @@ app.put('/api/products/:id', async (req, res) => {
   const { name, category, price, stock } = req.body;
   try {
     const result = await pool.query(
-      'UPDATE products SET name=\, category=\, price=\, stock=\ WHERE id=\ RETURNING *',
+      'UPDATE products SET name=$1, category=$2, price=$3, stock=$4 WHERE id=$5 RETURNING *',
       [name, category, price, stock, id]
     );
     res.json(result.rows[0]);
@@ -76,7 +76,7 @@ app.put('/api/products/:id', async (req, res) => {
 app.delete('/api/products/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    await pool.query('DELETE FROM products WHERE id=\', [id]);
+    await pool.query('DELETE FROM products WHERE id=$1', [id]);
     res.json({ message: 'Product deleted' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -85,12 +85,12 @@ app.delete('/api/products/:id', async (req, res) => {
 
 // ===== ORDERS ENDPOINTS =====
 
-// CREATE an order (manual)
+// CREATE an order
 app.post('/api/orders', async (req, res) => {
   const { customer_name, items, subtotal, tax, total } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO orders (customer_name, items, subtotal, tax, total, created_at) VALUES (\, \, \, \, \, NOW()) RETURNING *',
+      'INSERT INTO orders (customer_name, items, subtotal, tax, total, created_at) VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING *',
       [customer_name, JSON.stringify(items), subtotal, tax, total]
     );
     res.json(result.rows[0]);
@@ -113,7 +113,7 @@ app.get('/api/orders', async (req, res) => {
 app.delete('/api/orders/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    await pool.query('DELETE FROM orders WHERE id=\', [id]);
+    await pool.query('DELETE FROM orders WHERE id=$1', [id]);
     res.json({ message: 'Order deleted' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -132,5 +132,5 @@ if (process.env.NODE_ENV === 'production') {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(Server running on port );
+  console.log(`Server running on port ${PORT}`);
 });
