@@ -126,7 +126,7 @@ app.get('/service-worker.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'frontend/build/service-worker.js'));
 });
 
-// Serve React frontend in production
+// Serve React frontend
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'frontend/build')));
   
