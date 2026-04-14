@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 
 function App() {
@@ -22,7 +22,7 @@ function App() {
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
   // ===== FETCH DATA =====
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/products`);
       const data = await response.json();
@@ -30,9 +30,9 @@ function App() {
     } catch (error) {
       console.error('Error fetching products:', error);
     }
-  };
+  }, [API_URL]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/orders`);
       const data = await response.json();
@@ -40,12 +40,12 @@ function App() {
     } catch (error) {
       console.error('Error fetching orders:', error);
     }
-  };
+  }, [API_URL]);
 
   useEffect(() => {
     fetchProducts();
     fetchOrders();
-  }, []); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchProducts, fetchOrders]);
 
   // ===== PRODUCT MANAGEMENT =====
   const handleAddProduct = async () => {
@@ -109,7 +109,7 @@ function App() {
   };
 
   // ===== ORDER MANAGEMENT - NEW SEARCHABLE DROPDOWN =====
-  
+
   // Filter products based on search term
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
