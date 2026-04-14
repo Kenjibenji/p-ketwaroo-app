@@ -13,9 +13,10 @@ function App() {
 
   // Order form states
   const [customerName, setCustomerName] = useState('');
-  const [orderItems, setOrderItems] = useState([{ productId: '', quantity: '', price: '' }]);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
   const [subtotal, setSubtotal] = useState(0);
-  const [tax, setTax] = useState(0);
   const [total, setTotal] = useState(0);
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -107,31 +108,47 @@ function App() {
     }
   };
 
-  // ===== ORDER MANAGEMENT =====
-  const handleAddOrderItem = () => {
-    setOrderItems([...orderItems, { productId: '', quantity: '', price: '' }]);
-  };
+  // ===== ORDER MANAGEMENT - NEW SEARCHABLE DROPDOWN =====
+  
+  // Filter products based on search term
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const handleRemoveOrderItem = (index) => {
-    const newItems = orderItems.filter((_, i) => i !== index);
-    setOrderItems(newItems);
-    calculateTotals(newItems);
-  };
+  const addItemToOrder = (product) => {
+    const existingItem = selectedItems.find(item => item.id === product.id);
 
-  const handleOrderItemChange = (index, field, value) => {
-    const newItems = [...orderItems];
-    newItems[index][field] = value;
-
-    // Auto-fill price when product is selected
-    if (field === 'productId' && value) {
-      const selectedProduct = products.find(p => p.id === parseInt(value));
-      if (selectedProduct) {
-        newItems[index].price = parseFloat(selectedProduct.price).toString();
-      }
+    if (existingItem) {
+      setSelectedItems(selectedItems.map(item =>
+        item.id === product.id
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+    } else {
+      setSelectedItems([...selectedItems, { ...product, quantity: 1 }]);
     }
 
-    setOrderItems(newItems);
+    setSearchTerm('');
+    setShowDropdown(false);
+    calculateTotals([...selectedItems, { ...product, quantity: 1 }]);
+  };
+
+  const removeItemFromOrder = (productId) => {
+    const newItems = selectedItems.filter(item => item.id !== productId);
+    setSelectedItems(newItems);
     calculateTotals(newItems);
+  };
+
+  const updateItemQuantity = (productId, quantity) => {
+    if (quantity <= 0) {
+      removeItemFromOrder(productId);
+    } else {
+      const newItems = selectedItems.map(item =>
+        item.id === productId ? { ...item, quantity } : item
+      );
+      setSelectedItems(newItems);
+      calculateTotals(newItems);
+    }
   };
 
   const calculateTotals = (items) => {
@@ -141,10 +158,8 @@ function App() {
         sub += parseFloat(item.quantity) * parseFloat(item.price);
       }
     });
-    const taxAmount = sub * 0.1; // 10% tax
     setSubtotal(sub);
-    setTax(taxAmount);
-    setTotal(sub + taxAmount);
+    setTotal(sub); // NO TAX - subtotal = total
   };
 
   const handleCreateOrder = async () => {
@@ -153,8 +168,8 @@ function App() {
       return;
     }
 
-    if (orderItems.some(item => !item.productId || !item.quantity)) {
-      alert('Please fill all order items');
+    if (selectedItems.length === 0) {
+      alert('Please select at least one item');
       return;
     }
 
@@ -165,18 +180,18 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer_name: customerName,
-          items: orderItems,
+          items: selectedItems,
           subtotal: subtotal,
-          tax: tax,
+          tax: 0, // No tax
           total: total
         })
       });
 
       if (response.ok) {
         setCustomerName('');
-        setOrderItems([{ productId: '', quantity: '', price: '' }]);
+        setSelectedItems([]);
+        setSearchTerm('');
         setSubtotal(0);
-        setTax(0);
         setTotal(0);
         fetchOrders();
         alert('Order created successfully!');
@@ -208,7 +223,7 @@ function App() {
   };
 
   return (
-    <div className="app">
+    <div className="app-container">
       <header className="header">
         <h1>P.Ketwaroo and Sons Inventory System</h1>
       </header>
@@ -240,34 +255,42 @@ function App() {
           <div className="products-tab">
             <h2>Manage Products</h2>
 
-            <div className="form-section">
+            <div className="form-container">
               <h3>{editingProductId ? 'Edit Product' : 'Add New Product'}</h3>
-              <input
-                type="text"
-                placeholder="Product Name"
-                value={productForm.name}
-                onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-              />
-              <input
-                type="text"
-                placeholder="Category"
-                value={productForm.category}
-                onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-              />
-              <input
-                type="number"
-                step="0.01"
-                placeholder="Price"
-                value={productForm.price}
-                onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
-              />
-              <input
-                type="number"
-                placeholder="Stock"
-                value={productForm.stock}
-                onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })}
-              />
-              <button onClick={handleAddProduct} disabled={loading}>
+              <div className="form-group">
+                <input
+                  type="text"
+                  placeholder="Product Name"
+                  value={productForm.name}
+                  onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <input
+                  type="text"
+                  placeholder="Category"
+                  value={productForm.category}
+                  onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Price"
+                  value={productForm.price}
+                  onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <input
+                  type="number"
+                  placeholder="Stock"
+                  value={productForm.stock}
+                  onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })}
+                />
+              </div>
+              <button onClick={handleAddProduct} disabled={loading} className="btn btn-primary">
                 {editingProductId ? 'Update Product' : 'Add Product'}
               </button>
               {editingProductId && (
@@ -276,7 +299,8 @@ function App() {
                     setEditingProductId(null);
                     setProductForm({ name: '', category: '', price: '', stock: '' });
                   }}
-                  className="cancel-btn"
+                  className="btn btn-delete"
+                  style={{ marginLeft: '10px' }}
                 >
                   Cancel
                 </button>
@@ -308,10 +332,10 @@ function App() {
                         <td>${formatPrice(product.price)}</td>
                         <td>{product.stock}</td>
                         <td>
-                          <button onClick={() => handleEditProduct(product)} className="edit-btn">
+                          <button onClick={() => handleEditProduct(product)} className="btn btn-edit">
                             Edit
                           </button>
-                          <button onClick={() => handleDeleteProduct(product.id)} className="delete-btn">
+                          <button onClick={() => handleDeleteProduct(product.id)} className="btn btn-delete">
                             Delete
                           </button>
                         </td>
@@ -327,66 +351,110 @@ function App() {
         {/* ===== CREATE ORDER TAB ===== */}
         {activeTab === 'orders' && (
           <div className="orders-tab">
-            <h2>Create New Order</h2>
+            <div className="form-container">
+              <h2>Create New Order</h2>
 
-            <div className="order-form">
-              <label>Customer Name:</label>
-              <input
-                type="text"
-                placeholder="Enter customer name"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-              />
-
-              <h3>Order Items</h3>
-              {orderItems.map((item, index) => (
-                <div key={index} className="order-item">
-                  <select
-                    value={item.productId}
-                    onChange={(e) => handleOrderItemChange(index, 'productId', e.target.value)}
-                  >
-                    <option value="">Select Product</option>
-                    {products.map(product => (
-                      <option key={product.id} value={product.id}>
-                        {product.name} - ${formatPrice(product.price)}
-                      </option>
-                    ))}
-                  </select>
-
-                  <input
-                    type="number"
-                    step="1"
-                    placeholder="Quantity"
-                    value={item.quantity}
-                    onChange={(e) => handleOrderItemChange(index, 'quantity', e.target.value)}
-                  />
-
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="Price"
-                    value={item.price}
-                    onChange={(e) => handleOrderItemChange(index, 'price', e.target.value)}
-                    disabled
-                  />
-
-                  <button onClick={() => handleRemoveOrderItem(index)} className="remove-btn">
-                    Remove
-                  </button>
-                </div>
-              ))}
-
-              <button onClick={handleAddOrderItem} className="add-item-btn">
-                + Add Item
-              </button>
-
-              <div className="order-summary">
-                <p>Subtotal: <strong>${formatPrice(subtotal)}</strong></p>
-                <p>Tax (10%): <strong>${formatPrice(tax)}</strong></p>
-                <p className="total">Total: <strong>${formatPrice(total)}</strong></p>
+              <div className="form-group">
+                <label>Customer Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter customer name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                />
               </div>
 
-              <button onClick={handleCreateOrder} disabled={loading} className="create-order-btn">
+              {/* SEARCHABLE PRODUCT DROPDOWN */}
+              <div className="form-group">
+                <label>Select Product</label>
+                <div className="dropdown-container">
+                  <input
+                    type="text"
+                    className="search-input"
+                    placeholder="Search and select product..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setShowDropdown(true);
+                    }}
+                    onFocus={() => setShowDropdown(true)}
+                  />
+                  {showDropdown && (
+                    <div className="dropdown-options">
+                      {filteredProducts.length > 0 ? (
+                        filteredProducts.map(product => (
+                          <div
+                            key={product.id}
+                            className="dropdown-option"
+                            onClick={() => addItemToOrder(product)}
+                          >
+                            {product.name} - ${formatPrice(product.price)} (Stock: {product.stock})
+                          </div>
+                        ))
+                      ) : (
+                        <div className="dropdown-option" style={{ cursor: 'default' }}>
+                          No products found
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* SELECTED ITEMS */}
+              {selectedItems.length > 0 && (
+                <div className="selected-items">
+                  <h3>Selected Items</h3>
+                  {selectedItems.map(item => (
+                    <div key={item.id} className="selected-item">
+                      <div>
+                        <strong>{item.name}</strong> - ${formatPrice(item.price)} each
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value))}
+                          style={{
+                            width: '60px',
+                            padding: '6px',
+                            backgroundColor: '#3a3a3a',
+                            color: '#e0e0e0',
+                            border: '1px solid #404040',
+                            borderRadius: '4px'
+                          }}
+                        />
+                        <span>${formatPrice(item.price * item.quantity)}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeItemFromOrder(item.id)}
+                          className="btn btn-delete"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* SUMMARY - NO TAX */}
+              {selectedItems.length > 0 && (
+                <div className="summary">
+                  <div className="summary-row">
+                    <span>Total:</span>
+                    <span>${formatPrice(total)}</span>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={handleCreateOrder}
+                disabled={loading}
+                className="btn btn-primary"
+                style={{ marginTop: '20px', width: '100%' }}
+              >
                 Create Order
               </button>
             </div>
@@ -407,23 +475,29 @@ function App() {
                     <h4>{order.customer_name}</h4>
                     <p>Order ID: {order.id}</p>
                     <p>Date: {new Date(order.created_at).toLocaleDateString()}</p>
-                    <p>Subtotal: ${formatPrice(order.subtotal)}</p>
-                    <p>Tax: ${formatPrice(order.tax)}</p>
                     <p className="order-total">Total: ${formatPrice(order.total)}</p>
                     <details>
                       <summary>View Items</summary>
                       <ul>
-                        {JSON.parse(order.items).map((item, idx) => {
-                          const product = products.find(p => p.id === parseInt(item.productId));
-                          return (
+                        {Array.isArray(order.items) ? (
+                          order.items.map((item, idx) => (
                             <li key={idx}>
-                              {product?.name || 'Unknown Product'} - Qty: {item.quantity} x ${formatPrice(item.price)}
+                              {item.name} - Qty: {item.quantity} x ${formatPrice(item.price)}
                             </li>
-                          );
-                        })}
+                          ))
+                        ) : (
+                          JSON.parse(order.items).map((item, idx) => {
+                            const product = products.find(p => p.id === parseInt(item.productId));
+                            return (
+                              <li key={idx}>
+                                {product?.name || 'Unknown Product'} - Qty: {item.quantity} x ${formatPrice(item.price)}
+                              </li>
+                            );
+                          })
+                        )}
                       </ul>
                     </details>
-                    <button onClick={() => handleDeleteOrder(order.id)} className="delete-btn">
+                    <button onClick={() => handleDeleteOrder(order.id)} className="btn btn-delete">
                       Delete Order
                     </button>
                   </div>
