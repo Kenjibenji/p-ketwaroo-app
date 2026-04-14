@@ -120,6 +120,12 @@ app.delete('/api/orders/:id', async (req, res) => {
   }
 });
 
+// Serve service worker without caching
+app.get('/service-worker.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'frontend/build/service-worker.js'));
+});
+
 // Serve React frontend in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'frontend/build')));
@@ -134,3 +140,4 @@ if (process.env.NODE_ENV === 'production') {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+```__
