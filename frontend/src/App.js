@@ -22,11 +22,6 @@ function App() {
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
   // ===== FETCH DATA =====
-  useEffect(() => {
-    fetchProducts();
-    fetchOrders();
-  }, []);
-
   const fetchProducts = async () => {
     try {
       const response = await fetch(`${API_URL}/products`);
@@ -46,6 +41,11 @@ function App() {
       console.error('Error fetching orders:', error);
     }
   };
+
+  useEffect(() => {
+    fetchProducts();
+    fetchOrders();
+  }, []); // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // ===== PRODUCT MANAGEMENT =====
   const handleAddProduct = async () => {
