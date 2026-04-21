@@ -3,6 +3,18 @@ import './App.css';
 
 // ===== TOAST =====
 
+function useToast() {
+  const [toasts, setToasts] = useState([]);
+  const idRef = useRef(0);
+  const show = useCallback((message, type = 'info') => {
+    const id = ++idRef.current;
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+  }, []);
+  const dismiss = useCallback((id) => setToasts(prev => prev.filter(t => t.id !== id)), []);
+  return { toasts, show, dismiss };
+}
+
 function Toast({ toasts, onDismiss }) {
   return (
     <div className="toast-container">
@@ -15,509 +27,603 @@ function Toast({ toasts, onDismiss }) {
   );
 }
 
-function useToast() {
-  const [toasts, setToasts] = useState([]);
-  const idRef = useRef(0);
-
-  const show = useCallback((message, type = 'info') => {
-    const id = ++idRef.current;
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
-  }, []);
-
-  const dismiss = useCallback((id) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  }, []);
-
-  return { toasts, show, dismiss };
-}
-
 // ===== CONFIRM MODAL =====
 
-function ConfirmModal({ message, onConfirm, onCancel }) {
-  return (
+function useConfirm() {
+  const [pending, setPending] = useState(null);
+  const confirm = (message) => new Promise(resolve => setPending({ message, resolve }));
+  const handleConfirm = () => { pending.resolve(true); setPending(null); };
+  const handleCancel = () => { pending.resolve(false); setPending(null); };
+  const modal = pending ? (
     <div className="modal-overlay">
       <div className="modal">
-        <p>{message}</p>
+        <p>{pending.message}</p>
         <div className="modal-actions">
-          <button className="btn btn-delete" onClick={onConfirm}>Delete</button>
-          <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+          <button className="btn btn-danger" onClick={handleConfirm}>Delete</button>
+          <button className="btn btn-ghost" onClick={handleCancel}>Cancel</button>
         </div>
+      </div>
+    </div>
+  ) : null;
+  return { confirm, modal };
+}
+
+// ===== SHARED COMPONENTS =====
+
+function StatusBadge({ status }) {
+  const map = { pending: 'Pending', loaded: 'Loaded' };
+  return <span className={`status-badge status-${status}`}>{map[status] || status}</span>;
+}
+
+function StockBadge({ stock }) {
+  if (stock === 0) return <span className="stock-badge stock-out">Out</span>;
+  if (stock < 5)  return <span className="stock-badge stock-critical">{stock}</span>;
+  if (stock < 10) return <span className="stock-badge stock-low">{stock}</span>;
+  return <span>{stock}</span>;
+}
+
+function StatCard({ icon, label, value, accent }) {
+  return (
+    <div className={`stat-card accent-${accent}`}>
+      <div className="stat-icon">{icon}</div>
+      <div className="stat-body">
+        <div className="stat-value">{value}</div>
+        <div className="stat-label">{label}</div>
       </div>
     </div>
   );
 }
 
-function useConfirm() {
-  const [pending, setPending] = useState(null);
+const fmt = (n) => parseFloat(n || 0).toFixed(2);
 
-  const confirm = (message) =>
-    new Promise(resolve => setPending({ message, resolve }));
+const parseItems = (items) => {
+  if (Array.isArray(items)) return items;
+  try { return JSON.parse(items); } catch { return []; }
+};
 
-  const handleConfirm = () => { pending.resolve(true); setPending(null); };
-  const handleCancel = () => { pending.resolve(false); setPending(null); };
+// ===== DASHBOARD =====
 
-  const modal = pending ? (
-    <ConfirmModal message={pending.message} onConfirm={handleConfirm} onCancel={handleCancel} />
-  ) : null;
+function DashboardTab({ stats, orders, onTabChange }) {
+  const recent = orders.slice(0, 6);
+  return (
+    <div className="dashboard-tab">
+      <div className="stat-grid">
+        <StatCard icon="📦" label="Orders Today"     value={stats.todayOrders  ?? '—'} accent="blue" />
+        <StatCard icon="💰" label="Today's Revenue"  value={`$${fmt(stats.todayRevenue)}`} accent="green" />
+        <StatCard icon="⏳" label="Pending Orders"   value={stats.pendingOrders ?? '—'} accent="amber" />
+        <StatCard icon="⚠️" label="Low Stock Items"  value={stats.lowStockCount ?? '—'} accent="red" />
+      </div>
 
-  return { confirm, modal };
+      <div className="panel">
+        <div className="panel-header">
+          <h3>Recent Orders</h3>
+          <button className="btn-link" onClick={() => onTabChange('orders')}>View all →</button>
+        </div>
+        {recent.length === 0 ? (
+          <p className="empty-state">No orders yet.</p>
+        ) : (
+          <div className="recent-list">
+            {recent.map(o => (
+              <div key={o.id} className="recent-row">
+                <div className="recent-left">
+                  <span className="tag-muted">#{o.id}</span>
+                  <span className="recent-customer">{o.customer_name}</span>
+                  <span className="tag-muted">{new Date(o.created_at).toLocaleDateString()}</span>
+                </div>
+                <div className="recent-right">
+                  <span className="recent-amount">${fmt(o.total)}</span>
+                  <StatusBadge status={o.status || 'pending'} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
-// ===== APP =====
+// ===== PRODUCTS =====
 
-function App() {
-  const [activeTab, setActiveTab] = useState('products');
-  const [products, setProducts] = useState([]);
-  const [orders, setOrders] = useState([]);
+function ProductsTab({ products, onRefresh, toast, confirm, API_URL }) {
+  const [form, setForm] = useState({ name: '', category: '', price: '', stock: '' });
+  const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [catFilter, setCatFilter] = useState('All');
 
-  const [productForm, setProductForm] = useState({ name: '', category: '', price: '', stock: '' });
-  const [editingProductId, setEditingProductId] = useState(null);
-  const [productSearchTerm, setProductSearchTerm] = useState('');
+  const categories = ['All', ...Array.from(new Set(products.map(p => p.category).filter(Boolean))).sort()];
 
-  const [customerName, setCustomerName] = useState('');
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
+  const filtered = products.filter(p => {
+    const q = search.toLowerCase();
+    return (
+      (p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.id.toString().includes(q)) &&
+      (catFilter === 'All' || p.category === catFilter)
+    );
+  });
 
-  const { toasts, show: toast, dismiss } = useToast();
-  const { confirm, modal: confirmModal } = useConfirm();
+  const resetForm = () => { setForm({ name: '', category: '', price: '', stock: '' }); setEditingId(null); };
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
-  const fetchProducts = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/products`);
-      setProducts(await res.json());
-    } catch {
-      toast('Failed to load products', 'error');
-    }
-  }, [API_URL, toast]);
-
-  const fetchOrders = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/orders`);
-      setOrders(await res.json());
-    } catch {
-      toast('Failed to load orders', 'error');
-    }
-  }, [API_URL, toast]);
-
-  useEffect(() => {
-    fetchProducts();
-    fetchOrders();
-  }, [fetchProducts, fetchOrders]);
-
-  // ===== PRODUCTS =====
-
-  const handleSaveProduct = async () => {
-    if (!productForm.name || !productForm.category || !productForm.price || !productForm.stock) {
-      toast('Please fill all fields', 'error');
-      return;
+  const handleSave = async () => {
+    if (!form.name || !form.category || !form.price || !form.stock) {
+      toast('Please fill all fields', 'error'); return;
     }
     setLoading(true);
     try {
-      const method = editingProductId ? 'PUT' : 'POST';
-      const url = editingProductId
-        ? `${API_URL}/products/${editingProductId}`
-        : `${API_URL}/products`;
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: productForm.name,
-          category: productForm.category,
-          price: parseFloat(productForm.price),
-          stock: parseInt(productForm.stock),
-        }),
-      });
-
-      if (res.ok) {
-        setProductForm({ name: '', category: '', price: '', stock: '' });
-        setEditingProductId(null);
-        fetchProducts();
-        toast(editingProductId ? 'Product updated' : 'Product added', 'success');
-      } else {
-        const data = await res.json();
-        toast(data.error || 'Failed to save product', 'error');
-      }
-    } catch {
-      toast('Failed to save product', 'error');
-    } finally {
-      setLoading(false);
-    }
+      const res = await fetch(
+        editingId ? `${API_URL}/products/${editingId}` : `${API_URL}/products`,
+        {
+          method: editingId ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: form.name, category: form.category,
+            price: parseFloat(form.price), stock: parseInt(form.stock),
+          }),
+        }
+      );
+      if (res.ok) { resetForm(); onRefresh(); toast(editingId ? 'Product updated' : 'Product added', 'success'); }
+      else { const d = await res.json(); toast(d.error || 'Failed to save', 'error'); }
+    } catch { toast('Failed to save product', 'error'); }
+    finally { setLoading(false); }
   };
 
-  const handleEditProduct = (product) => {
-    setProductForm({
-      name: product.name,
-      category: product.category,
-      price: product.price.toString(),
-      stock: product.stock.toString(),
-    });
-    setEditingProductId(product.id);
-  };
-
-  const handleDeleteProduct = async (id) => {
-    const ok = await confirm('Delete this product?');
-    if (!ok) return;
+  const handleDelete = async (id) => {
+    if (!await confirm('Delete this product?')) return;
     try {
       const res = await fetch(`${API_URL}/products/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchProducts();
-        toast('Product deleted', 'success');
-      } else {
-        const data = await res.json();
-        toast(data.error || 'Failed to delete product', 'error');
-      }
-    } catch {
-      toast('Failed to delete product', 'error');
-    }
+      if (res.ok) { onRefresh(); toast('Product deleted', 'success'); }
+      else { const d = await res.json(); toast(d.error || 'Failed to delete', 'error'); }
+    } catch { toast('Failed to delete product', 'error'); }
   };
 
-  // ===== ORDERS =====
+  return (
+    <div className="products-tab">
+      <div className="panel">
+        <h3 className="panel-title">{editingId ? 'Edit Product' : 'Add New Product'}</h3>
+        <div className="form-grid-4">
+          <div className="form-group">
+            <label>Product Name</label>
+            <input type="text" placeholder="e.g. Cement Bag 50kg" value={form.name}
+              onChange={e => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <label>Category</label>
+            <input type="text" placeholder="e.g. Building Materials" value={form.category}
+              onChange={e => setForm({ ...form, category: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <label>Price ($)</label>
+            <input type="number" step="0.01" min="0" placeholder="0.00" value={form.price}
+              onChange={e => setForm({ ...form, price: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <label>Stock</label>
+            <input type="number" min="0" placeholder="0" value={form.stock}
+              onChange={e => setForm({ ...form, stock: e.target.value })} />
+          </div>
+        </div>
+        <div className="form-actions">
+          <button onClick={handleSave} disabled={loading} className="btn btn-primary">
+            {loading ? 'Saving...' : editingId ? 'Update Product' : 'Add Product'}
+          </button>
+          {editingId && <button onClick={resetForm} className="btn btn-ghost">Cancel</button>}
+        </div>
+      </div>
 
-  const filteredDropdown = products.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+      <div className="panel">
+        <h3 className="panel-title">Products</h3>
+        <div className="filter-bar">
+          <input type="text" className="search-input" placeholder="Search by name, category, or ID..."
+            value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <div className="pill-row">
+          {categories.map(cat => (
+            <button key={cat} className={`pill ${catFilter === cat ? 'pill-active' : ''}`}
+              onClick={() => setCatFilter(cat)}>{cat}</button>
+          ))}
+        </div>
+
+        {products.length === 0 ? (
+          <p className="empty-state">No products yet. Add your first one above.</p>
+        ) : filtered.length === 0 ? (
+          <p className="empty-state">No products match your search.</p>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(p => (
+                  <tr key={p.id} className={p.stock === 0 ? 'row-critical' : p.stock < 5 ? 'row-critical' : p.stock < 10 ? 'row-warning' : ''}>
+                    <td className="td-muted">{p.id}</td>
+                    <td><strong>{p.name}</strong></td>
+                    <td><span className="cat-tag">{p.category}</span></td>
+                    <td>${fmt(p.price)}</td>
+                    <td><StockBadge stock={p.stock} /></td>
+                    <td>
+                      <div className="action-btns">
+                        <button onClick={() => { setForm({ name: p.name, category: p.category, price: p.price.toString(), stock: p.stock.toString() }); setEditingId(p.id); }} className="btn btn-sm btn-success">Edit</button>
+                        <button onClick={() => handleDelete(p.id)} className="btn btn-sm btn-danger">Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ===== CREATE ORDER =====
+
+function CreateOrderTab({ products, customers, onOrderCreated, toast, API_URL }) {
+  const [customerName, setCustomerName] = useState('');
+  const [showCustDrop, setShowCustDrop] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [showProdDrop, setShowProdDrop] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const filteredCustomers = customers.filter(c =>
+    c.toLowerCase().includes(customerName.toLowerCase())
+  ).slice(0, 8);
+
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(productSearch.toLowerCase())
   );
 
-  const filteredProductsTable = products.filter(p =>
-    p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-    p.category.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-    p.id.toString().includes(productSearchTerm)
-  );
+  const total = selectedItems.reduce((sum, i) => sum + parseFloat(i.price) * i.quantity, 0);
 
-  const calcTotal = (items) =>
-    items.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0);
-
-  const addItemToOrder = (product) => {
+  const addItem = (product) => {
     setSelectedItems(prev => {
       const existing = prev.find(i => i.id === product.id);
       return existing
         ? prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i)
         : [...prev, { ...product, quantity: 1 }];
     });
-    setSearchTerm('');
-    setShowDropdown(false);
+    setProductSearch('');
+    setShowProdDrop(false);
   };
 
-  const removeItemFromOrder = (productId) => {
-    setSelectedItems(prev => prev.filter(i => i.id !== productId));
+  const removeItem = (id) => setSelectedItems(prev => prev.filter(i => i.id !== id));
+
+  const updateQty = (id, qty) => {
+    if (qty <= 0) return removeItem(id);
+    setSelectedItems(prev => prev.map(i => i.id === id ? { ...i, quantity: qty } : i));
   };
 
-  const updateItemQuantity = (productId, quantity) => {
-    if (quantity <= 0) return removeItemFromOrder(productId);
-    setSelectedItems(prev => prev.map(i => i.id === productId ? { ...i, quantity } : i));
-  };
-
-  const handleCreateOrder = async () => {
-    if (!customerName) { toast('Please enter customer name', 'error'); return; }
-    if (selectedItems.length === 0) { toast('Please select at least one item', 'error'); return; }
-
-    const total = calcTotal(selectedItems);
+  const handleCreate = async () => {
+    if (!customerName.trim()) { toast('Enter a customer name', 'error'); return; }
+    if (selectedItems.length === 0) { toast('Select at least one item', 'error'); return; }
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_name: customerName,
-          items: selectedItems,
-          subtotal: total,
-          tax: 0,
-          total,
-        }),
+        body: JSON.stringify({ customer_name: customerName.trim(), items: selectedItems, subtotal: total, tax: 0, total }),
       });
-
       if (res.ok) {
-        setCustomerName('');
-        setSelectedItems([]);
-        setSearchTerm('');
-        fetchOrders();
+        setCustomerName(''); setSelectedItems([]);
+        onOrderCreated();
         toast('Order created', 'success');
       } else {
-        const data = await res.json();
-        toast(data.error || 'Failed to create order', 'error');
+        const d = await res.json(); toast(d.error || 'Failed to create order', 'error');
       }
-    } catch {
-      toast('Failed to create order', 'error');
-    } finally {
-      setLoading(false);
-    }
+    } catch { toast('Failed to create order', 'error'); }
+    finally { setLoading(false); }
   };
-
-  const handleDeleteOrder = async (id) => {
-    const ok = await confirm('Delete this order?');
-    if (!ok) return;
-    try {
-      const res = await fetch(`${API_URL}/orders/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchOrders();
-        toast('Order deleted', 'success');
-      } else {
-        const data = await res.json();
-        toast(data.error || 'Failed to delete order', 'error');
-      }
-    } catch {
-      toast('Failed to delete order', 'error');
-    }
-  };
-
-  const fmt = (price) => parseFloat(price).toFixed(2);
 
   return (
-    <div className="app-container">
+    <div className="create-order-tab">
+      <div className="panel">
+        <h3 className="panel-title">New Order</h3>
+
+        <div className="form-group">
+          <label>Customer Name</label>
+          <div className="dropdown-container">
+            <input type="text" placeholder="Type or select customer..."
+              value={customerName}
+              onChange={e => { setCustomerName(e.target.value); setShowCustDrop(true); }}
+              onFocus={() => setShowCustDrop(true)}
+              onBlur={() => setTimeout(() => setShowCustDrop(false), 150)}
+            />
+            {showCustDrop && customerName.length > 0 && filteredCustomers.length > 0 && (
+              <div className="dropdown-options">
+                {filteredCustomers.map((c, i) => (
+                  <div key={i} className="dropdown-option"
+                    onMouseDown={() => { setCustomerName(c); setShowCustDrop(false); }}>
+                    {c}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>Add Products</label>
+          <div className="dropdown-container">
+            <input type="text" className="search-input" placeholder="Search product..."
+              value={productSearch}
+              onChange={e => { setProductSearch(e.target.value); setShowProdDrop(true); }}
+              onFocus={() => setShowProdDrop(true)}
+              onBlur={() => setTimeout(() => setShowProdDrop(false), 150)}
+            />
+            {showProdDrop && productSearch && (
+              <div className="dropdown-options">
+                {filteredProducts.length > 0 ? filteredProducts.map(p => (
+                  <div key={p.id} className="dropdown-option" onMouseDown={() => addItem(p)}>
+                    <span>{p.name}</span>
+                    <span className="drop-meta">${fmt(p.price)} · {p.stock} in stock</span>
+                  </div>
+                )) : (
+                  <div className="dropdown-option dropdown-empty">No products found</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {selectedItems.length > 0 && (
+          <div className="order-items-box">
+            <div className="order-items-title">Order Items</div>
+            {selectedItems.map(item => (
+              <div key={item.id} className="order-item-row">
+                <div className="order-item-info">
+                  <strong>{item.name}</strong>
+                  <span className="tag-muted">${fmt(item.price)} each</span>
+                </div>
+                <div className="order-item-controls">
+                  <button className="qty-btn" onClick={() => updateQty(item.id, item.quantity - 1)}>−</button>
+                  <span className="qty-val">{item.quantity}</span>
+                  <button className="qty-btn" onClick={() => updateQty(item.id, item.quantity + 1)}>+</button>
+                  <span className="item-total">${fmt(item.price * item.quantity)}</span>
+                  <button className="btn btn-sm btn-danger" onClick={() => removeItem(item.id)}>×</button>
+                </div>
+              </div>
+            ))}
+            <div className="order-total-bar">
+              <span>Total</span>
+              <span className="grand-total">${fmt(total)}</span>
+            </div>
+          </div>
+        )}
+
+        <button onClick={handleCreate} disabled={loading} className="btn btn-primary btn-full">
+          {loading ? 'Creating...' : 'Create Order'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ===== ORDERS =====
+
+function OrdersTab({ orders, onRefresh, toast, confirm, API_URL }) {
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [expandedId, setExpandedId] = useState(null);
+  const [localOrders, setLocalOrders] = useState(orders);
+
+  useEffect(() => setLocalOrders(orders), [orders]);
+
+  const filtered = localOrders.filter(o => {
+    const q = search.toLowerCase();
+    const matchSearch = o.customer_name.toLowerCase().includes(q) || o.id.toString().includes(q);
+    const matchStatus = statusFilter === 'all' || (o.status || 'pending') === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  const toggleItem = async (order, idx) => {
+    const items = parseItems(order.items).map((item, i) =>
+      i === idx ? { ...item, loaded: !item.loaded } : item
+    );
+    const allLoaded = items.every(i => i.loaded);
+    const newStatus = allLoaded ? 'loaded' : 'pending';
+
+    setLocalOrders(prev => prev.map(o => o.id === order.id ? { ...o, items, status: newStatus } : o));
+
+    try {
+      await fetch(`${API_URL}/orders/${order.id}/items`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items, status: newStatus }),
+      });
+    } catch {
+      toast('Failed to save', 'error');
+      onRefresh();
+    }
+  };
+
+  const markAllLoaded = async (order) => {
+    const items = parseItems(order.items).map(i => ({ ...i, loaded: true }));
+    setLocalOrders(prev => prev.map(o => o.id === order.id ? { ...o, items, status: 'loaded' } : o));
+    try {
+      await fetch(`${API_URL}/orders/${order.id}/items`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items, status: 'loaded' }),
+      });
+      toast('Order marked as loaded', 'success');
+    } catch {
+      toast('Failed to update order', 'error');
+      onRefresh();
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!await confirm('Delete this order?')) return;
+    try {
+      const res = await fetch(`${API_URL}/orders/${id}`, { method: 'DELETE' });
+      if (res.ok) { onRefresh(); toast('Order deleted', 'success'); }
+      else { const d = await res.json(); toast(d.error || 'Failed to delete', 'error'); }
+    } catch { toast('Failed to delete order', 'error'); }
+  };
+
+  return (
+    <div className="orders-tab">
+      <div className="filter-bar">
+        <input type="text" className="search-input" placeholder="Search by customer or order #..."
+          value={search} onChange={e => setSearch(e.target.value)} />
+        <div className="pill-row no-margin">
+          {['all', 'pending', 'loaded'].map(s => (
+            <button key={s} className={`pill ${statusFilter === s ? 'pill-active' : ''}`}
+              onClick={() => setStatusFilter(s)}>
+              {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="empty-state">No orders found.</p>
+      ) : (
+        <div className="orders-list">
+          {filtered.map(order => {
+            const items = parseItems(order.items).map(i => ({ ...i, loaded: i.loaded ?? false }));
+            const status = order.status || 'pending';
+            const loadedCount = items.filter(i => i.loaded).length;
+            const allLoaded = loadedCount === items.length;
+            const isExpanded = expandedId === order.id;
+
+            return (
+              <div key={order.id} className={`order-card ${status === 'loaded' ? 'order-done' : ''}`}>
+                <div className="order-card-head" onClick={() => setExpandedId(isExpanded ? null : order.id)}>
+                  <div className="order-head-left">
+                    <span className="tag-muted">#{order.id}</span>
+                    <span className="order-cust-name">{order.customer_name}</span>
+                  </div>
+                  <div className="order-head-right">
+                    <span className="order-amt">${fmt(order.total)}</span>
+                    <StatusBadge status={status} />
+                    <span className="chevron">{isExpanded ? '▲' : '▼'}</span>
+                  </div>
+                </div>
+                <div className="order-card-date">
+                  {new Date(order.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </div>
+
+                {isExpanded && (
+                  <div className="order-detail">
+                    <div className="checklist-header">
+                      <span className="checklist-title">Loading Checklist</span>
+                      <span className="checklist-progress">{loadedCount}/{items.length} loaded</span>
+                    </div>
+
+                    <div className="checklist">
+                      {items.map((item, idx) => (
+                        <label key={idx} className={`checklist-item ${item.loaded ? 'checklist-done' : ''}`}>
+                          <input type="checkbox" checked={item.loaded}
+                            onChange={() => toggleItem({ ...order, items }, idx)} />
+                          <span className="ci-name">{item.name}</span>
+                          <span className="ci-qty">× {item.quantity}</span>
+                          <span className="ci-price">${fmt(item.price * item.quantity)}</span>
+                        </label>
+                      ))}
+                    </div>
+
+                    {status !== 'loaded' ? (
+                      <button
+                        className={`btn btn-full ${allLoaded ? 'btn-success' : 'btn-ghost'}`}
+                        onClick={() => allLoaded && markAllLoaded({ ...order, items })}
+                        disabled={!allLoaded}
+                      >
+                        {allLoaded ? '✓ Mark as Fully Loaded' : `Check off all ${items.length} items to complete`}
+                      </button>
+                    ) : (
+                      <div className="loaded-confirm">✓ All items loaded and verified</div>
+                    )}
+
+                    <button onClick={() => handleDelete(order.id)} className="btn btn-sm btn-danger order-delete-btn">
+                      Delete Order
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===== APP =====
+
+function App() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [stats, setStats] = useState({});
+
+  const { toasts, show: toast, dismiss } = useToast();
+  const { confirm, modal: confirmModal } = useConfirm();
+
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+  const fetchAll = useCallback(async () => {
+    try {
+      const [p, o, c, s] = await Promise.all([
+        fetch(`${API_URL}/products`).then(r => r.json()),
+        fetch(`${API_URL}/orders`).then(r => r.json()),
+        fetch(`${API_URL}/customers`).then(r => r.json()),
+        fetch(`${API_URL}/stats`).then(r => r.json()),
+      ]);
+      setProducts(Array.isArray(p) ? p : []);
+      setOrders(Array.isArray(o) ? o : []);
+      setCustomers(Array.isArray(c) ? c : []);
+      setStats(s && !s.error ? s : {});
+    } catch {
+      toast('Failed to load data', 'error');
+    }
+  }, [API_URL, toast]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const tabs = [
+    { id: 'dashboard',     label: 'Dashboard' },
+    { id: 'products',      label: 'Products' },
+    { id: 'create-order',  label: 'Create Order' },
+    { id: 'orders',        label: 'Orders' },
+  ];
+
+  return (
+    <div className="app">
       <Toast toasts={toasts} onDismiss={dismiss} />
       {confirmModal}
 
-      <header className="header">
-        <h1>P.Ketwaroo and Sons Inventory System</h1>
+      <header className="app-header">
+        <div className="header-inner">
+          <div className="header-logo">P.Ketwaroo <span className="header-amp">&amp;</span> Sons</div>
+          <div className="header-sub">Inventory Management System</div>
+        </div>
       </header>
 
-      <div className="tabs">
-        {['products', 'orders', 'history'].map(tab => (
-          <button
-            key={tab}
-            className={`tab-button ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab === 'products' ? 'Products' : tab === 'orders' ? 'Create Order' : 'Order History'}
-          </button>
-        ))}
-      </div>
+      <nav className="app-nav">
+        <div className="nav-inner">
+          {tabs.map(tab => (
+            <button key={tab.id}
+              className={`nav-tab ${activeTab === tab.id ? 'nav-tab-active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </nav>
 
-      <div className="tab-content">
-
-        {/* ===== PRODUCTS TAB ===== */}
-        {activeTab === 'products' && (
-          <div className="products-tab">
-            <h2>Manage Products</h2>
-
-            <div className="form-container">
-              <h3>{editingProductId ? 'Edit Product' : 'Add New Product'}</h3>
-              {['name', 'category'].map(field => (
-                <div className="form-group" key={field}>
-                  <input
-                    type="text"
-                    placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
-                    value={productForm[field]}
-                    onChange={(e) => setProductForm({ ...productForm, [field]: e.target.value })}
-                  />
-                </div>
-              ))}
-              <div className="form-group">
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="Price"
-                  value={productForm.price}
-                  onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <input
-                  type="number"
-                  placeholder="Stock"
-                  value={productForm.stock}
-                  onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })}
-                />
-              </div>
-              <div className="form-actions">
-                <button onClick={handleSaveProduct} disabled={loading} className="btn btn-primary">
-                  {editingProductId ? 'Update Product' : 'Add Product'}
-                </button>
-                {editingProductId && (
-                  <button
-                    onClick={() => { setEditingProductId(null); setProductForm({ name: '', category: '', price: '', stock: '' }); }}
-                    className="btn btn-secondary"
-                  >
-                    Cancel
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="products-list">
-              <h3>Current Products</h3>
-              <div className="form-group">
-                <input
-                  type="text"
-                  placeholder="Search by name, category, or ID..."
-                  value={productSearchTerm}
-                  onChange={(e) => setProductSearchTerm(e.target.value)}
-                  className="search-input"
-                />
-              </div>
-
-              {products.length === 0 ? (
-                <p className="empty-state">No products yet</p>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredProductsTable.length > 0 ? (
-                      filteredProductsTable.map(product => (
-                        <tr key={product.id}>
-                          <td>{product.id}</td>
-                          <td>{product.name}</td>
-                          <td>{product.category}</td>
-                          <td>${fmt(product.price)}</td>
-                          <td>{product.stock}</td>
-                          <td className="actions-cell">
-                            <button onClick={() => handleEditProduct(product)} className="btn btn-edit">Edit</button>
-                            <button onClick={() => handleDeleteProduct(product.id)} className="btn btn-delete">Delete</button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr><td colSpan="6" className="empty-state">No products found</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ===== CREATE ORDER TAB ===== */}
-        {activeTab === 'orders' && (
-          <div className="orders-tab">
-            <div className="form-container">
-              <h2>Create New Order</h2>
-
-              <div className="form-group">
-                <label>Customer Name</label>
-                <input
-                  type="text"
-                  placeholder="Enter customer name"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Select Product</label>
-                <div className="dropdown-container">
-                  <input
-                    type="text"
-                    className="search-input"
-                    placeholder="Search and select product..."
-                    value={searchTerm}
-                    onChange={(e) => { setSearchTerm(e.target.value); setShowDropdown(true); }}
-                    onFocus={() => setShowDropdown(true)}
-                  />
-                  {showDropdown && (
-                    <div className="dropdown-options">
-                      {filteredDropdown.length > 0 ? (
-                        filteredDropdown.map(product => (
-                          <div
-                            key={product.id}
-                            className="dropdown-option"
-                            onMouseDown={() => addItemToOrder(product)}
-                          >
-                            {product.name} — ${fmt(product.price)} (Stock: {product.stock})
-                          </div>
-                        ))
-                      ) : (
-                        <div className="dropdown-option dropdown-empty">No products found</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {selectedItems.length > 0 && (
-                <div className="selected-items">
-                  <h3>Selected Items</h3>
-                  {selectedItems.map(item => (
-                    <div key={item.id} className="selected-item">
-                      <div>
-                        <strong>{item.name}</strong> — ${fmt(item.price)} each
-                      </div>
-                      <div className="selected-item-controls">
-                        <input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          className="qty-input"
-                          onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value))}
-                        />
-                        <span>${fmt(item.price * item.quantity)}</span>
-                        <button type="button" onClick={() => removeItemFromOrder(item.id)} className="btn btn-delete">
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {selectedItems.length > 0 && (
-                <div className="summary">
-                  <div className="summary-row total-row">
-                    <span>Total:</span>
-                    <span>${fmt(calcTotal(selectedItems))}</span>
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={handleCreateOrder}
-                disabled={loading}
-                className="btn btn-primary btn-full"
-              >
-                Create Order
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ===== ORDER HISTORY TAB ===== */}
-        {activeTab === 'history' && (
-          <div className="history-tab">
-            <h2>Order History</h2>
-            <div className="orders-list">
-              {orders.length === 0 ? (
-                <p className="empty-state">No orders yet</p>
-              ) : (
-                orders.map(order => {
-                  const items = Array.isArray(order.items)
-                    ? order.items
-                    : JSON.parse(order.items);
-                  return (
-                    <div key={order.id} className="order-card">
-                      <h4>{order.customer_name}</h4>
-                      <p>Order #{order.id}</p>
-                      <p>{new Date(order.created_at).toLocaleDateString()}</p>
-                      <p className="order-total">Total: ${fmt(order.total)}</p>
-                      <details>
-                        <summary>View Items</summary>
-                        <ul>
-                          {items.map((item, idx) => (
-                            <li key={idx}>
-                              {item.name} — Qty: {item.quantity} × ${fmt(item.price)}
-                            </li>
-                          ))}
-                        </ul>
-                      </details>
-                      <button onClick={() => handleDeleteOrder(order.id)} className="btn btn-delete">
-                        Delete Order
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        )}
-
-      </div>
+      <main className="app-main">
+        {activeTab === 'dashboard'    && <DashboardTab stats={stats} orders={orders} onTabChange={setActiveTab} />}
+        {activeTab === 'products'     && <ProductsTab products={products} onRefresh={fetchAll} toast={toast} confirm={confirm} API_URL={API_URL} />}
+        {activeTab === 'create-order' && <CreateOrderTab products={products} customers={customers} onOrderCreated={fetchAll} toast={toast} API_URL={API_URL} />}
+        {activeTab === 'orders'       && <OrdersTab orders={orders} onRefresh={fetchAll} toast={toast} confirm={confirm} API_URL={API_URL} />}
+      </main>
     </div>
   );
 }
