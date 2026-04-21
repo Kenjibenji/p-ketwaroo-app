@@ -27,6 +27,7 @@ pool.query('SELECT NOW()').then(() => {
 }).catch(err => console.error('Startup error:', err.message));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/ping', (req, res) => res.json({ ok: true, version: 'v3-single-html', node: process.version, cwd: process.cwd() }));
 
 // ===== STATS =====
 
