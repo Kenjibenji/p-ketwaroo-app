@@ -1,6 +1,33 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './App.css';
 
+// ===== ERROR BOUNDARY =====
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error: error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '40px', fontFamily: 'monospace', background: '#0b0d18', color: '#e05252', minHeight: '100vh' }}>
+          <h2 style={{ color: '#e05252' }}>App Error</h2>
+          <pre style={{ whiteSpace: 'pre-wrap', color: '#ccc', fontSize: '13px' }}>
+            {this.state.error && this.state.error.toString()}
+            {'\n\n'}
+            {this.state.error && this.state.error.stack}
+          </pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ===== TOAST =====
 
 function useToast() {
@@ -688,4 +715,5 @@ function App() {
   );
 }
 
+export { ErrorBoundary };
 export default App;
