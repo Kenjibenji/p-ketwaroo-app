@@ -214,16 +214,9 @@ app.delete('/api/orders/:id', async (req, res) => {
   }
 });
 
-app.get('/service-worker.js', (req, res) => {
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.sendFile(path.join(__dirname, 'frontend/build/service-worker.js'));
-});
-
-app.use(express.static(path.join(__dirname, 'frontend/build')));
+app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend/build/index.html'), (err) => {
-    if (err) res.status(200).send('<html><body><h2>App loading...</h2><p>Build not found. Server is up.</p></body></html>');
-  });
+  res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
