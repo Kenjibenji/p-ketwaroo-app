@@ -642,7 +642,7 @@ function App() {
   var confirm = confirmHook.confirm;
   var confirmModal = confirmHook.modal;
 
-  var API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  var API_URL = '/api';
 
   var fetchAll = useCallback(async function() {
     try {
