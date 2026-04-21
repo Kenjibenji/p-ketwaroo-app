@@ -215,6 +215,22 @@ app.delete('/api/orders/:id', async (req, res) => {
   }
 });
 
+// Kill the old CRA service worker so it stops serving cached pages
+app.get('/service-worker.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(`
+    self.addEventListener('install', () => self.skipWaiting());
+    self.addEventListener('activate', async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+      await self.clients.claim();
+      const clients = await self.clients.matchAll({ type: 'window' });
+      clients.forEach(c => c.navigate(c.url));
+    });
+  `);
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));
