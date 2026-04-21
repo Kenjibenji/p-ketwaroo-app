@@ -4,517 +4,616 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>P. Ketwaroo Inventory System</title>
-<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/preact/standalone.umd.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0b0d18;color:#c8cde8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
-button{cursor:pointer;border:none;font-family:inherit;font-size:14px}
-input,select{font-family:inherit;font-size:14px}
-.app-header{background:#0f1222;border-bottom:1px solid #252840;padding:16px 24px}
-.header-logo{font-size:20px;font-weight:700;color:#fff}
-.header-sub{font-size:12px;color:#5a6080;margin-top:2px}
-.app-nav{background:#0f1222;border-bottom:1px solid #252840;padding:0 24px}
-.nav-inner{display:flex;gap:4px}
-.nav-tab{background:none;color:#5a6080;padding:12px 16px;border-bottom:2px solid transparent;transition:all .15s}
-.nav-tab:hover{color:#c8cde8}
-.nav-tab-active{color:#5b8ff0;border-bottom-color:#5b8ff0}
-.app-main{padding:24px;max-width:1100px;margin:0 auto}
+body{background:#0b0d18;color:#c8cde8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;font-size:14px}
+button{cursor:pointer;border:none;font-family:inherit;font-size:14px;transition:opacity .15s}
+button:hover{opacity:.85}
+input,select,textarea{font-family:inherit;font-size:14px}
+
+/* layout */
+.header{background:#0f1222;border-bottom:1px solid #252840;padding:14px 24px}
+.header-logo{font-size:19px;font-weight:700;color:#fff}
+.header-sub{font-size:11px;color:#5a6080;margin-top:2px}
+.nav{background:#0f1222;border-bottom:1px solid #252840;padding:0 24px;display:flex;gap:4px}
+.nav-btn{background:none;color:#5a6080;padding:11px 16px;border-bottom:2px solid transparent}
+.nav-btn:hover{color:#c8cde8;opacity:1}
+.nav-btn.active{color:#5b8ff0;border-bottom-color:#5b8ff0}
+.main{padding:24px;max-width:1100px;margin:0 auto}
+
+/* card */
 .card{background:#13162a;border:1px solid #252840;border-radius:8px;padding:20px;margin-bottom:20px}
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}
-.stat-card{background:#13162a;border:1px solid #252840;border-radius:8px;padding:16px;display:flex;align-items:center;gap:14px;border-left:3px solid #252840}
-.stat-card.blue{border-left-color:#5b8ff0}.stat-card.green{border-left-color:#2dc875}
-.stat-card.amber{border-left-color:#f0a820}.stat-card.red{border-left-color:#e05252}
-.stat-icon{font-size:24px}
-.stat-value{font-size:22px;font-weight:700;color:#fff}
-.stat-label{font-size:12px;color:#5a6080;margin-top:2px}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}
+.stat{background:#13162a;border:1px solid #252840;border-radius:8px;padding:16px;display:flex;align-items:center;gap:14px}
+.stat.blue{border-left:3px solid #5b8ff0}.stat.green{border-left:3px solid #2dc875}
+.stat.amber{border-left:3px solid #f0a820}.stat.red{border-left:3px solid #e05252}
+.stat-icon{font-size:22px}
+.stat-val{font-size:22px;font-weight:700;color:#fff}
+.stat-lbl{font-size:12px;color:#5a6080;margin-top:2px}
+
+/* form */
 .form-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-.form-group{display:flex;flex-direction:column;gap:6px;flex:1;min-width:120px}
-.form-group label{font-size:12px;color:#5a6080;font-weight:500}
-.form-control{background:#0b0d18;border:1px solid #252840;border-radius:6px;padding:8px 12px;color:#c8cde8;outline:none;width:100%}
-.form-control:focus{border-color:#5b8ff0}
-.btn{padding:8px 16px;border-radius:6px;font-weight:500;transition:opacity .15s}
-.btn:hover{opacity:.85}
-.btn-primary{background:#5b8ff0;color:#fff}
-.btn-success{background:#2dc875;color:#fff}
-.btn-danger{background:#e05252;color:#fff}
-.btn-ghost{background:#252840;color:#c8cde8}
-.btn-sm{padding:5px 10px;font-size:12px}
-.btn-xs{padding:3px 8px;font-size:11px}
-.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.fg{display:flex;flex-direction:column;gap:5px;flex:1;min-width:110px}
+.fg label{font-size:11px;color:#5a6080;font-weight:500;text-transform:uppercase;letter-spacing:.4px}
+.input{background:#0b0d18;border:1px solid #252840;border-radius:6px;padding:8px 12px;color:#c8cde8;outline:none;width:100%}
+.input:focus{border-color:#5b8ff0}
+
+/* buttons */
+.btn{padding:8px 16px;border-radius:6px;font-weight:500}
+.btn.primary{background:#5b8ff0;color:#fff}
+.btn.success{background:#2dc875;color:#fff}
+.btn.danger{background:#e05252;color:#fff}
+.btn.ghost{background:#252840;color:#c8cde8}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn.xs{padding:3px 8px;font-size:11px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* table */
 table{width:100%;border-collapse:collapse}
-th{text-align:left;font-size:12px;color:#5a6080;font-weight:500;padding:8px 12px;border-bottom:1px solid #252840}
-td{padding:10px 12px;border-bottom:1px solid #1a1e35;font-size:14px;vertical-align:middle}
+th{text-align:left;font-size:11px;color:#5a6080;font-weight:500;padding:8px 12px;border-bottom:1px solid #252840;text-transform:uppercase;letter-spacing:.4px}
+td{padding:10px 12px;border-bottom:1px solid #1a1e35;vertical-align:middle}
 tr:last-child td{border-bottom:none}
-tr.low-stock td{background:#1a1210}
+tr.lowstock td{background:#160e0e}
+
+/* badges */
 .badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600}
-.badge-pending{background:#3a2e10;color:#f0a820}
-.badge-loaded{background:#0e2e1e;color:#2dc875}
-.badge-out{background:#2e1010;color:#e05252}
-.badge-critical{background:#2e1010;color:#e05252}
-.badge-low{background:#3a2e10;color:#f0a820}
-.pill-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.badge.pending{background:#3a2e10;color:#f0a820}
+.badge.loaded{background:#0e2e1e;color:#2dc875}
+.badge.out{background:#2e1010;color:#e05252}
+.badge.critical{background:#2e1010;color:#e05252}
+.badge.low{background:#3a2e10;color:#f0a820}
+
+/* pills */
+.pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .pill{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;background:#1a1e35;color:#5a6080;cursor:pointer;border:1px solid transparent;user-select:none}
 .pill:hover{color:#c8cde8}
 .pill.active{background:#1e2d4a;color:#5b8ff0;border-color:#5b8ff0}
-.search-wrap{position:relative;margin-bottom:16px}
-.search-wrap input{width:100%;background:#0b0d18;border:1px solid #252840;border-radius:6px;padding:9px 12px 9px 36px;color:#c8cde8;outline:none}
-.search-wrap input:focus{border-color:#5b8ff0}
-.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#5a6080;font-size:14px;pointer-events:none}
-.order-card{background:#0f1222;border:1px solid #252840;border-radius:8px;margin-bottom:12px}
-.order-hdr{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer}
-.order-hdr:hover{background:#13162a;border-radius:8px}
-.order-meta{font-size:12px;color:#5a6080;margin-top:3px}
-.order-body{padding:0 16px 16px}
+
+/* search */
+.search-wrap{position:relative;margin-bottom:14px}
+.search-wrap .input{padding-left:34px}
+.search-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#5a6080;pointer-events:none}
+
+/* autocomplete */
+.ac-wrap{position:relative}
+.ac-drop{position:absolute;top:calc(100% + 2px);left:0;right:0;background:#1a1e35;border:1px solid #252840;border-radius:6px;z-index:50;max-height:160px;overflow-y:auto;display:none}
+.ac-drop.open{display:block}
+.ac-item{padding:9px 12px;cursor:pointer}
+.ac-item:hover{background:#252840}
+
+/* order card */
+.ord-card{background:#0f1222;border:1px solid #252840;border-radius:8px;margin-bottom:10px;overflow:hidden}
+.ord-hdr{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer}
+.ord-hdr:hover{background:#13162a}
+.ord-meta{font-size:12px;color:#5a6080;margin-top:3px}
+.ord-body{padding:0 16px 14px;display:none}
+.ord-body.open{display:block}
+
+/* checklist */
 .chk-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #1a1e35}
 .chk-item:last-child{border-bottom:none}
-.chk-item.done span.iname{text-decoration:line-through;color:#5a6080}
 .chk-item input[type=checkbox]{width:16px;height:16px;accent-color:#2dc875;cursor:pointer;flex-shrink:0}
-.ac-wrap{position:relative}
-.ac-list{position:absolute;top:100%;left:0;right:0;background:#1a1e35;border:1px solid #252840;border-radius:6px;z-index:100;max-height:160px;overflow-y:auto}
-.ac-item{padding:9px 12px;cursor:pointer;font-size:14px}
-.ac-item:hover{background:#252840}
+.chk-item.done .iname{text-decoration:line-through;color:#5a6080}
+
+/* order items */
 .oi-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #1a1e35}
 .oi-row:last-child{border-bottom:none}
-.qty-btn{width:28px;height:28px;border-radius:4px;background:#252840;color:#c8cde8;font-size:16px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer}
-.qty-btn:hover{background:#5b8ff0;color:#fff}
-.total-bar{background:#0f1222;border-radius:6px;padding:14px 16px;margin-top:12px;display:flex;justify-content:space-between;align-items:center}
+.qty-btn{width:28px;height:28px;border-radius:4px;background:#252840;color:#c8cde8;font-size:18px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+.qty-btn:hover{background:#5b8ff0;color:#fff;opacity:1}
+.total-bar{background:#0b0d18;border-radius:6px;padding:14px 16px;margin-top:12px;display:flex;justify-content:space-between;align-items:center}
 .total-lbl{color:#5a6080;font-size:13px}
 .total-val{font-size:20px;font-weight:700;color:#fff}
-.toast-wrap{position:fixed;top:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
-.toast{padding:12px 18px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;min-width:200px;max-width:320px;pointer-events:all;animation:tin .2s ease}
-.toast-success{background:#0e2e1e;color:#2dc875;border:1px solid #2dc875}
-.toast-error{background:#2e1010;color:#e05252;border:1px solid #e05252}
-.toast-info{background:#1e2d4a;color:#5b8ff0;border:1px solid #5b8ff0}
+
+/* toast */
+#toasts{position:fixed;top:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{padding:12px 18px;border-radius:8px;font-size:14px;font-weight:500;min-width:200px;max-width:320px;pointer-events:all;cursor:pointer;animation:tin .2s ease}
+.toast.success{background:#0e2e1e;color:#2dc875;border:1px solid #2dc875}
+.toast.error{background:#2e1010;color:#e05252;border:1px solid #e05252}
+.toast.info{background:#1e2d4a;color:#5b8ff0;border:1px solid #5b8ff0}
 @keyframes tin{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:900;display:flex;align-items:center;justify-content:center}
-.modal{background:#13162a;border:1px solid #252840;border-radius:10px;padding:24px;min-width:300px;max-width:440px}
-.modal p{margin-bottom:20px;line-height:1.6}
-.modal-actions{display:flex;gap:10px;justify-content:flex-end}
-.sec-title{font-size:16px;font-weight:600;color:#fff;margin-bottom:16px}
-.sec-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-.rec-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1a1e35;font-size:14px}
+
+/* modal */
+#modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:900;display:none;align-items:center;justify-content:center}
+#modal-bg.open{display:flex}
+#modal-box{background:#13162a;border:1px solid #252840;border-radius:10px;padding:24px;min-width:300px;max-width:420px}
+#modal-msg{margin-bottom:20px;line-height:1.6;color:#c8cde8}
+#modal-actions{display:flex;gap:10px;justify-content:flex-end}
+
+.sec-title{font-size:16px;font-weight:600;color:#fff;margin-bottom:14px}
+.sec-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.empty{color:#5a6080;padding:16px 0}
+.rec-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1a1e35}
 .rec-row:last-child{border-bottom:none}
-.empty{color:#5a6080;font-size:14px;padding:12px 0}
 </style>
 </head>
 <body>
-<div id="root"></div>
+
+<div id="toasts"></div>
+
+<div id="modal-bg">
+  <div id="modal-box">
+    <p id="modal-msg"></p>
+    <div id="modal-actions">
+      <button class="btn danger" id="modal-yes">Delete</button>
+      <button class="btn ghost"  id="modal-no">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="header">
+  <div class="header-logo">P. Ketwaroo &amp; Sons</div>
+  <div class="header-sub">Inventory Management System</div>
+</div>
+
+<nav class="nav" id="nav"></nav>
+
+<div class="main" id="main"></div>
+
 <script>
-const { html, render, useState, useEffect, useCallback, useRef } = htmPreact;
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+const S = {
+  tab: 'dashboard',
+  products: [], orders: [], customers: [], stats: {},
+  // products tab
+  p_search: '', p_cat: 'All', p_editId: null,
+  p_form: {name:'',category:'',price:'',stock:''},
+  // orders tab
+  o_search: '', o_filter: 'all', o_expanded: null,
+  // create order tab
+  c_cust: '', c_prod: '', c_items: [],
+  c_cust_open: false, c_prod_open: false,
+};
 
 const TAX = 0.15;
-const fmt = n => parseFloat(n || 0).toFixed(2);
+const fmt = n => parseFloat(n||0).toFixed(2);
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function parseItems(v){ if(Array.isArray(v))return v; try{return JSON.parse(v);}catch(e){return[];} }
 
-function parseItems(v) {
-  if (Array.isArray(v)) return v;
-  try { return JSON.parse(v); } catch(e) { return []; }
+// ═══════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════
+function toast(msg, type){
+  type = type||'info';
+  const el = document.createElement('div');
+  el.className = 'toast '+type;
+  el.textContent = msg;
+  el.onclick = () => el.remove();
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>el.remove(), 3000);
 }
 
-// ── Toast ──────────────────────────────────────────────────
-function useToast() {
-  const [list, setList] = useState([]);
-  const n = useRef(0);
-  const show = useCallback((msg, type) => {
-    const id = ++n.current;
-    type = type || 'info';
-    setList(p => [...p, {id, msg, type}]);
-    setTimeout(() => setList(p => p.filter(t => t.id !== id)), 3000);
-  }, []);
-  const dismiss = id => setList(p => p.filter(t => t.id !== id));
-  return {list, show, dismiss};
+// ═══════════════════════════════════════════════════════════
+// CONFIRM MODAL
+// ═══════════════════════════════════════════════════════════
+function confirm(msg){
+  return new Promise(resolve => {
+    document.getElementById('modal-msg').textContent = msg;
+    document.getElementById('modal-bg').classList.add('open');
+    const yes = document.getElementById('modal-yes');
+    const no  = document.getElementById('modal-no');
+    function cleanup(result){ document.getElementById('modal-bg').classList.remove('open'); yes.onclick=null; no.onclick=null; resolve(result); }
+    yes.onclick = ()=>cleanup(true);
+    no.onclick  = ()=>cleanup(false);
+  });
 }
 
-function Toasts({list, dismiss}) {
-  return html`<div class="toast-wrap">
-    ${list.map(t => html`<div key=${t.id} class=${'toast toast-'+t.type} onClick=${()=>dismiss(t.id)}>${t.msg}</div>`)}
+// ═══════════════════════════════════════════════════════════
+// API
+// ═══════════════════════════════════════════════════════════
+async function api(url, opts){
+  const res = await fetch(url, opts);
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error||'Request failed');
+  return data;
+}
+
+async function fetchAll(){
+  try {
+    const [p,o,c,s] = await Promise.all([
+      fetch('/api/products').then(r=>r.json()),
+      fetch('/api/orders').then(r=>r.json()),
+      fetch('/api/customers').then(r=>r.json()),
+      fetch('/api/stats').then(r=>r.json()),
+    ]);
+    S.products  = Array.isArray(p)?p:[];
+    S.orders    = Array.isArray(o)?o:[];
+    S.customers = Array.isArray(c)?c:[];
+    S.stats     = (s&&!s.error)?s:{};
+    render();
+  } catch(e){ toast('Failed to load data','error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// BADGE HELPERS
+// ═══════════════════════════════════════════════════════════
+function statusBadge(status){
+  return `<span class="badge ${status==='loaded'?'loaded':'pending'}">${status==='loaded'?'Loaded':'Pending'}</span>`;
+}
+function stockBadge(n){
+  if(n===0) return `<span class="badge out">Out</span>`;
+  if(n<5)   return `<span class="badge critical">${n}</span>`;
+  if(n<10)  return `<span class="badge low">${n}</span>`;
+  return n;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TABS HTML
+// ═══════════════════════════════════════════════════════════
+function dashboardHTML(){
+  const st = S.stats;
+  const recent = S.orders.slice(0,5);
+  return `
+  <div class="stats">
+    <div class="stat blue"><div class="stat-icon">📦</div><div><div class="stat-val">${st.todayOrders||0}</div><div class="stat-lbl">Orders Today</div></div></div>
+    <div class="stat amber"><div class="stat-icon">⏳</div><div><div class="stat-val">${st.pendingOrders||0}</div><div class="stat-lbl">Pending</div></div></div>
+    <div class="stat red"><div class="stat-icon">⚠️</div><div><div class="stat-val">${st.lowStockCount||0}</div><div class="stat-lbl">Low Stock</div></div></div>
+    <div class="stat green"><div class="stat-icon">💰</div><div><div class="stat-val">$${fmt(st.todayRevenue)}</div><div class="stat-lbl">Revenue Today</div></div></div>
+  </div>
+  <div class="card">
+    <div class="sec-row">
+      <div class="sec-title">Recent Orders</div>
+      <button class="btn ghost sm" data-action="go-orders">View All</button>
+    </div>
+    ${recent.length===0?'<p class="empty">No orders yet.</p>':recent.map(o=>`
+    <div class="rec-row">
+      <div>
+        <div style="font-weight:500">${esc(o.customer_name)}</div>
+        <div style="font-size:12px;color:#5a6080">${new Date(o.created_at).toLocaleDateString()}</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        ${statusBadge(o.status||'pending')}
+        <span style="font-weight:600">$${fmt(o.total)}</span>
+      </div>
+    </div>`).join('')}
   </div>`;
 }
 
-// ── Confirm ────────────────────────────────────────────────
-function useConfirm() {
-  const [state, setState] = useState(null);
-  const confirm = msg => new Promise(res => setState({msg, res}));
-  const yes = () => { state.res(true);  setState(null); };
-  const no  = () => { state.res(false); setState(null); };
-  const modal = state ? html`
-    <div class="modal-bg">
-      <div class="modal">
-        <p>${state.msg}</p>
-        <div class="modal-actions">
-          <button class="btn btn-danger" onClick=${yes}>Delete</button>
-          <button class="btn btn-ghost"  onClick=${no}>Cancel</button>
-        </div>
-      </div>
-    </div>` : null;
-  return {confirm, modal};
-}
-
-// ── Badges ─────────────────────────────────────────────────
-function StatusBadge({status}) {
-  return html`<span class=${'badge badge-'+(status||'pending')}>${status === 'loaded' ? 'Loaded' : 'Pending'}</span>`;
-}
-function StockBadge({stock}) {
-  if (stock === 0) return html`<span class="badge badge-out">Out</span>`;
-  if (stock < 5)  return html`<span class="badge badge-critical">${stock}</span>`;
-  if (stock < 10) return html`<span class="badge badge-low">${stock}</span>`;
-  return html`<span>${stock}</span>`;
-}
-
-// ── Dashboard ──────────────────────────────────────────────
-function DashboardTab({stats, orders, onTab}) {
-  const recent = orders.slice(0, 5);
-  return html`<div>
-    <div class="stats-grid">
-      <div class="stat-card blue"><div class="stat-icon">📦</div><div><div class="stat-value">${stats.todayOrders||0}</div><div class="stat-label">Orders Today</div></div></div>
-      <div class="stat-card amber"><div class="stat-icon">⏳</div><div><div class="stat-value">${stats.pendingOrders||0}</div><div class="stat-label">Pending</div></div></div>
-      <div class="stat-card red"><div class="stat-icon">⚠️</div><div><div class="stat-value">${stats.lowStockCount||0}</div><div class="stat-label">Low Stock</div></div></div>
-      <div class="stat-card green"><div class="stat-icon">💰</div><div><div class="stat-value">$${fmt(stats.todayRevenue)}</div><div class="stat-label">Revenue Today</div></div></div>
-    </div>
-    <div class="card">
-      <div class="sec-row">
-        <div class="sec-title">Recent Orders</div>
-        <button class="btn btn-ghost btn-sm" onClick=${()=>onTab('orders')}>View All</button>
-      </div>
-      ${recent.length === 0 ? html`<p class="empty">No orders yet.</p>` : recent.map(o => html`
-        <div key=${o.id} class="rec-row">
-          <div>
-            <div style="font-weight:500">${o.customer_name}</div>
-            <div style="font-size:12px;color:#5a6080">${new Date(o.created_at).toLocaleDateString()}</div>
-          </div>
-          <div style="display:flex;gap:10px;align-items:center">
-            <${StatusBadge} status=${o.status||'pending'}/>
-            <span style="font-weight:600">$${fmt(o.total)}</span>
-          </div>
-        </div>`)}
-    </div>
-  </div>`;
-}
-
-// ── Products ───────────────────────────────────────────────
-function ProductsTab({products, onRefresh, toast, confirm}) {
-  const [form, setForm] = useState({name:'',category:'',price:'',stock:''});
-  const [editId, setEditId] = useState(null);
-  const [search, setSearch] = useState('');
-  const [cat, setCat] = useState('All');
-
-  const cats = ['All', ...Array.from(new Set(products.map(p=>p.category).filter(Boolean)))];
-  const filtered = products.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) &&
-    (cat === 'All' || p.category === cat)
+function productsHTML(){
+  const cats = ['All',...new Set(S.products.map(p=>p.category).filter(Boolean))];
+  const filtered = S.products.filter(p=>
+    p.name.toLowerCase().includes(S.p_search.toLowerCase()) &&
+    (S.p_cat==='All'||p.category===S.p_cat)
   );
-
-  function startEdit(p) { setEditId(p.id); setForm({name:p.name,category:p.category,price:p.price,stock:p.stock}); }
-  function cancelEdit() { setEditId(null); setForm({name:'',category:'',price:'',stock:''}); }
-  function setF(k){ return e => setForm(f=>({...f,[k]:e.target.value})); }
-
-  async function save(e) {
-    e.preventDefault();
-    if (!form.name||!form.category||form.price===''||form.stock==='') return toast('All fields required','error');
-    const url = editId ? '/api/products/'+editId : '/api/products';
-    const method = editId ? 'PUT' : 'POST';
-    try {
-      const res = await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify({name:form.name,category:form.category,price:parseFloat(form.price),stock:parseInt(form.stock)})});
-      const data = await res.json();
-      if (!res.ok) return toast(data.error||'Failed','error');
-      toast(editId?'Product updated':'Product added','success');
-      cancelEdit(); onRefresh();
-    } catch(err) { toast('Network error','error'); }
-  }
-
-  async function del(id, name) {
-    if (!await confirm('Delete "'+name+'"?')) return;
-    try {
-      const res = await fetch('/api/products/'+id,{method:'DELETE'});
-      if (!res.ok) return toast('Failed to delete','error');
-      toast('Deleted','success'); onRefresh();
-    } catch(err) { toast('Network error','error'); }
-  }
-
-  return html`<div>
-    <div class="card">
-      <div class="sec-title">${editId ? 'Edit Product' : 'Add Product'}</div>
-      <form onSubmit=${save}>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Name</label>
-            <input class="form-control" value=${form.name} onInput=${setF('name')} placeholder="Product name"/>
-          </div>
-          <div class="form-group">
-            <label>Category</label>
-            <input class="form-control" value=${form.category} onInput=${setF('category')} placeholder="e.g. Beverages"/>
-          </div>
-          <div class="form-group" style="max-width:120px">
-            <label>Price ($)</label>
-            <input class="form-control" type="number" step="0.01" min="0" value=${form.price} onInput=${setF('price')} placeholder="0.00"/>
-          </div>
-          <div class="form-group" style="max-width:100px">
-            <label>Stock</label>
-            <input class="form-control" type="number" min="0" value=${form.stock} onInput=${setF('stock')} placeholder="0"/>
-          </div>
-        </div>
-        <div class="btn-row">
-          <button type="submit" class="btn btn-primary">${editId ? 'Update' : 'Add Product'}</button>
-          ${editId ? html`<button type="button" class="btn btn-ghost" onClick=${cancelEdit}>Cancel</button>` : null}
-        </div>
-      </form>
+  const f = S.p_form;
+  return `
+  <div class="card">
+    <div class="sec-title">${S.p_editId?'Edit Product':'Add Product'}</div>
+    <div class="form-row">
+      <div class="fg"><label>Name</label><input class="input" id="p-name" value="${esc(f.name)}" placeholder="Product name"/></div>
+      <div class="fg"><label>Category</label><input class="input" id="p-cat-inp" value="${esc(f.category)}" placeholder="e.g. Beverages"/></div>
+      <div class="fg" style="max-width:120px"><label>Price ($)</label><input class="input" id="p-price" type="number" step="0.01" min="0" value="${esc(f.price)}" placeholder="0.00"/></div>
+      <div class="fg" style="max-width:100px"><label>Stock</label><input class="input" id="p-stock" type="number" min="0" value="${esc(f.stock)}" placeholder="0"/></div>
     </div>
-    <div class="card">
-      <div class="search-wrap">
-        <span class="search-icon">🔍</span>
-        <input value=${search} onInput=${e=>setSearch(e.target.value)} placeholder="Search products…"/>
-      </div>
-      <div class="pill-bar">
-        ${cats.map(c => html`<div key=${c} class=${'pill'+(cat===c?' active':'')} onClick=${()=>setCat(c)}>${c}</div>`)}
-      </div>
-      <table>
-        <thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th></th></tr></thead>
-        <tbody>
-          ${filtered.length===0 ? html`<tr><td colspan="5" style="color:#5a6080;text-align:center;padding:20px">No products found</td></tr>` : null}
-          ${filtered.map(p => html`
-            <tr key=${p.id} class=${p.stock<10?'low-stock':''}>
-              <td style="font-weight:500">${p.name}</td>
-              <td style="color:#5a6080">${p.category}</td>
-              <td>$${fmt(p.price)}</td>
-              <td><${StockBadge} stock=${p.stock}/></td>
-              <td>
-                <div class="btn-row">
-                  <button class="btn btn-ghost btn-xs" onClick=${()=>startEdit(p)}>Edit</button>
-                  <button class="btn btn-danger btn-xs" onClick=${()=>del(p.id,p.name)}>Delete</button>
-                </div>
-              </td>
-            </tr>`)}
-        </tbody>
-      </table>
+    <div class="btn-row">
+      <button class="btn primary" data-action="save-product">${S.p_editId?'Update':'Add Product'}</button>
+      ${S.p_editId?'<button class="btn ghost" data-action="cancel-edit">Cancel</button>':''}
     </div>
+  </div>
+  <div class="card">
+    <div class="search-wrap">
+      <span class="search-ico">🔍</span>
+      <input class="input" id="p-search" value="${esc(S.p_search)}" placeholder="Search products…"/>
+    </div>
+    <div class="pills">
+      ${cats.map(c=>`<div class="pill${S.p_cat===c?' active':''}" data-cat="${esc(c)}">${esc(c)}</div>`).join('')}
+    </div>
+    <table>
+      <thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th></th></tr></thead>
+      <tbody>
+        ${filtered.length===0?'<tr><td colspan="5" style="color:#5a6080;text-align:center;padding:20px">No products found</td></tr>':
+          filtered.map(p=>`
+          <tr class="${p.stock<10?'lowstock':''}">
+            <td style="font-weight:500">${esc(p.name)}</td>
+            <td style="color:#5a6080">${esc(p.category)}</td>
+            <td>$${fmt(p.price)}</td>
+            <td>${stockBadge(p.stock)}</td>
+            <td>
+              <div class="btn-row">
+                <button class="btn ghost xs" data-action="edit-product" data-id="${p.id}">Edit</button>
+                <button class="btn danger xs" data-action="del-product" data-id="${p.id}" data-name="${esc(p.name)}">Delete</button>
+              </div>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
   </div>`;
 }
 
-// ── Create Order ───────────────────────────────────────────
-function CreateOrderTab({products, customers, onDone, toast}) {
-  const [cust, setCust] = useState('');
-  const [showCust, setShowCust] = useState(false);
-  const [prodQ, setProdQ] = useState('');
-  const [showProd, setShowProd] = useState(false);
-  const [items, setItems] = useState([]);
-
-  const custSug = customers.filter(c => cust.length>0 && c.toLowerCase().includes(cust.toLowerCase()));
-  const prodSug = products.filter(p => prodQ.length>0 && p.name.toLowerCase().includes(prodQ.toLowerCase()) && p.stock>0);
-
-  function addItem(p) {
-    setItems(prev => {
-      const ex = prev.find(i=>i.id===p.id);
-      if (ex) return prev.map(i=>i.id===p.id?{...i,qty:i.qty+1}:i);
-      return [...prev,{id:p.id,name:p.name,price:parseFloat(p.price),qty:1}];
-    });
-    setProdQ(''); setShowProd(false);
-  }
-  function changeQty(id,d){ setItems(prev=>prev.map(i=>i.id===id?{...i,qty:Math.max(1,i.qty+d)}:i)); }
-  function removeItem(id){ setItems(prev=>prev.filter(i=>i.id!==id)); }
-
+function createOrderHTML(){
+  const custSug = S.customers.filter(c=>S.c_cust.length>0&&c.toLowerCase().includes(S.c_cust.toLowerCase()));
+  const prodSug = S.products.filter(p=>S.c_prod.length>0&&p.name.toLowerCase().includes(S.c_prod.toLowerCase())&&p.stock>0);
+  const items = S.c_items;
   const subtotal = items.reduce((s,i)=>s+i.price*i.qty,0);
   const tax = subtotal*TAX;
   const total = subtotal+tax;
-
-  async function place() {
-    if (!cust.trim()) return toast('Customer name required','error');
-    if (items.length===0) return toast('Add at least one item','error');
-    const body = {customer_name:cust.trim(),items:items.map(i=>({id:i.id,name:i.name,price:i.price,quantity:i.qty})),subtotal,tax,total};
-    try {
-      const res = await fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-      const data = await res.json();
-      if (!res.ok) return toast(data.error||'Failed','error');
-      toast('Order created!','success');
-      setCust(''); setItems([]); onDone();
-    } catch(err) { toast('Network error','error'); }
-  }
-
-  return html`<div class="card">
+  return `
+  <div class="card">
     <div class="sec-title">New Order</div>
-    <div class="form-group" style="margin-bottom:16px">
+    <div class="fg" style="margin-bottom:16px">
       <label>Customer Name</label>
       <div class="ac-wrap">
-        <input class="form-control" value=${cust}
-          onInput=${e=>{setCust(e.target.value);setShowCust(true);}}
-          onBlur=${()=>setTimeout(()=>setShowCust(false),150)}
-          placeholder="Type customer name…"/>
-        ${showCust && custSug.length>0 ? html`<div class="ac-list">
-          ${custSug.map(s=>html`<div key=${s} class="ac-item" onMouseDown=${()=>{setCust(s);setShowCust(false);}}>${s}</div>`)}
-        </div>` : null}
+        <input class="input" id="c-cust" value="${esc(S.c_cust)}" placeholder="Type customer name…" autocomplete="off"/>
+        <div class="ac-drop${S.c_cust_open&&custSug.length>0?' open':''}" id="cust-drop">
+          ${custSug.map(s=>`<div class="ac-item" data-action="pick-cust" data-val="${esc(s)}">${esc(s)}</div>`).join('')}
+        </div>
       </div>
     </div>
-    <div class="form-group" style="margin-bottom:16px">
+    <div class="fg" style="margin-bottom:16px">
       <label>Add Product</label>
       <div class="ac-wrap">
-        <input class="form-control" value=${prodQ}
-          onInput=${e=>{setProdQ(e.target.value);setShowProd(true);}}
-          onBlur=${()=>setTimeout(()=>setShowProd(false),150)}
-          placeholder="Search products…"/>
-        ${showProd && prodSug.length>0 ? html`<div class="ac-list">
-          ${prodSug.map(p=>html`<div key=${p.id} class="ac-item" onMouseDown=${()=>addItem(p)}>${p.name} — $${fmt(p.price)} <span style="color:#5a6080">(stock: ${p.stock})</span></div>`)}
-        </div>` : null}
+        <input class="input" id="c-prod" value="${esc(S.c_prod)}" placeholder="Search products…" autocomplete="off"/>
+        <div class="ac-drop${S.c_prod_open&&prodSug.length>0?' open':''}" id="prod-drop">
+          ${prodSug.map(p=>`<div class="ac-item" data-action="pick-prod" data-id="${p.id}" data-name="${esc(p.name)}" data-price="${p.price}">
+            ${esc(p.name)} — $${fmt(p.price)} <span style="color:#5a6080">(stock: ${p.stock})</span>
+          </div>`).join('')}
+        </div>
       </div>
     </div>
-    ${items.length>0 ? html`<div>
-      ${items.map(i=>html`<div key=${i.id} class="oi-row">
-        <div style="flex:1;font-weight:500">${i.name}</div>
+    ${items.length>0?`
+    <div>
+      ${items.map(i=>`
+      <div class="oi-row">
+        <div style="flex:1;font-weight:500">${esc(i.name)}</div>
         <div style="color:#5a6080;font-size:13px;margin-right:12px">$${fmt(i.price)} ea</div>
-        <button class="qty-btn" onClick=${()=>changeQty(i.id,-1)}>−</button>
+        <button class="qty-btn" data-action="qty-minus" data-id="${i.id}">−</button>
         <span style="min-width:28px;text-align:center;font-weight:600">${i.qty}</span>
-        <button class="qty-btn" onClick=${()=>changeQty(i.id,+1)}>+</button>
+        <button class="qty-btn" data-action="qty-plus" data-id="${i.id}">+</button>
         <div style="min-width:70px;text-align:right;font-weight:600">$${fmt(i.price*i.qty)}</div>
-        <button class="btn btn-danger btn-xs" style="margin-left:8px" onClick=${()=>removeItem(i.id)}>✕</button>
-      </div>`)}
+        <button class="btn danger xs" style="margin-left:8px" data-action="remove-item" data-id="${i.id}">✕</button>
+      </div>`).join('')}
       <div class="total-bar">
-        <div class="total-lbl">Subtotal $${fmt(subtotal)} · Tax 15% $${fmt(tax)}</div>
+        <div class="total-lbl">Subtotal $${fmt(subtotal)} &nbsp;·&nbsp; Tax 15% $${fmt(tax)}</div>
         <div><span class="total-lbl" style="margin-right:8px">Total</span><span class="total-val">$${fmt(total)}</span></div>
       </div>
       <div style="margin-top:16px">
-        <button class="btn btn-success" onClick=${place}>Place Order</button>
+        <button class="btn success" data-action="place-order">Place Order</button>
       </div>
-    </div>` : null}
+    </div>`:''}
   </div>`;
 }
 
-// ── Orders ─────────────────────────────────────────────────
-function OrdersTab({orders, onRefresh, toast, confirm}) {
-  const [search, setSearch] = useState('');
-  const [sf, setSf] = useState('all');
-  const [expanded, setExpanded] = useState(null);
-  const [local, setLocal] = useState(orders);
-
-  useEffect(()=>setLocal(orders),[orders]);
-
-  const filtered = local.filter(o =>
-    o.customer_name.toLowerCase().includes(search.toLowerCase()) &&
-    (sf==='all'||o.status===sf)
+function ordersHTML(){
+  const filtered = S.orders.filter(o=>
+    o.customer_name.toLowerCase().includes(S.o_search.toLowerCase()) &&
+    (S.o_filter==='all'||o.status===S.o_filter)
   );
-
-  async function toggleItem(order, idx) {
-    const items = parseItems(order.items).map((it,i)=>i===idx?{...it,loaded:!it.loaded}:it);
-    const status = items.every(it=>it.loaded)?'loaded':'pending';
-    setLocal(prev=>prev.map(o=>o.id===order.id?{...o,items:JSON.stringify(items),status}:o));
-    try {
-      const res = await fetch('/api/orders/'+order.id+'/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,status})});
-      if (!res.ok){toast('Update failed','error');onRefresh();}
-    } catch(err){toast('Network error','error');onRefresh();}
-  }
-
-  async function markAll(order) {
-    const items = parseItems(order.items).map(it=>({...it,loaded:true}));
-    setLocal(prev=>prev.map(o=>o.id===order.id?{...o,items:JSON.stringify(items),status:'loaded'}:o));
-    try {
-      await fetch('/api/orders/'+order.id+'/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,status:'loaded'})});
-      toast('Marked as loaded','success');
-    } catch(err){toast('Network error','error');onRefresh();}
-  }
-
-  async function del(id) {
-    if (!await confirm('Delete this order?')) return;
-    try {
-      const res = await fetch('/api/orders/'+id,{method:'DELETE'});
-      if (!res.ok) return toast('Failed to delete','error');
-      toast('Deleted','success'); onRefresh();
-    } catch(err){toast('Network error','error');}
-  }
-
-  return html`<div>
-    <div class="search-wrap">
-      <span class="search-icon">🔍</span>
-      <input value=${search} onInput=${e=>setSearch(e.target.value)} placeholder="Search by customer…"/>
-    </div>
-    <div class="pill-bar">
-      ${['all','pending','loaded'].map(s=>html`
-        <div key=${s} class=${'pill'+(sf===s?' active':'')} onClick=${()=>setSf(s)}>
-          ${s==='all'?'All':s==='pending'?'Pending':'Loaded'}
-        </div>`)}
-    </div>
-    ${filtered.length===0?html`<p class="empty">No orders found.</p>`:null}
-    ${filtered.map(order=>{
+  return `
+  <div class="search-wrap">
+    <span class="search-ico">🔍</span>
+    <input class="input" id="o-search" value="${esc(S.o_search)}" placeholder="Search by customer…"/>
+  </div>
+  <div class="pills">
+    <div class="pill${S.o_filter==='all'?' active':''}" data-status-filter="all">All</div>
+    <div class="pill${S.o_filter==='pending'?' active':''}" data-status-filter="pending">Pending</div>
+    <div class="pill${S.o_filter==='loaded'?' active':''}" data-status-filter="loaded">Loaded</div>
+  </div>
+  ${filtered.length===0?'<p class="empty">No orders found.</p>':
+    filtered.map(order=>{
       const items = parseItems(order.items);
-      const open = expanded===order.id;
+      const open = S.o_expanded===order.id;
       const allDone = items.length>0&&items.every(i=>i.loaded);
-      return html`<div key=${order.id} class="order-card">
-        <div class="order-hdr" onClick=${()=>setExpanded(open?null:order.id)}>
+      return `
+      <div class="ord-card">
+        <div class="ord-hdr" data-action="toggle-order" data-id="${order.id}">
           <div>
-            <div style="font-weight:600;font-size:15px">${order.customer_name}</div>
-            <div class="order-meta">${new Date(order.created_at).toLocaleDateString()} · ${items.length} item${items.length!==1?'s':''} · $${fmt(order.total)}</div>
+            <div style="font-weight:600;font-size:15px">${esc(order.customer_name)}</div>
+            <div class="ord-meta">${new Date(order.created_at).toLocaleDateString()} · ${items.length} item${items.length!==1?'s':''} · $${fmt(order.total)}</div>
           </div>
           <div style="display:flex;gap:10px;align-items:center">
-            <${StatusBadge} status=${order.status||'pending'}/>
+            ${statusBadge(order.status||'pending')}
             <span style="color:#5a6080">${open?'▲':'▼'}</span>
           </div>
         </div>
-        ${open?html`<div class="order-body">
-          ${items.map((it,idx)=>html`
-            <div key=${idx} class=${'chk-item'+(it.loaded?' done':'')}>
-              <input type="checkbox" checked=${!!it.loaded} onChange=${()=>toggleItem(order,idx)}/>
-              <span class="iname" style="flex:1">${it.name}</span>
-              <span style="color:#5a6080;font-size:13px">×${it.quantity}</span>
-              <span style="font-weight:600;min-width:60px;text-align:right">$${fmt(it.price*it.quantity)}</span>
-            </div>`)}
+        <div class="ord-body${open?' open':''}">
+          ${items.map((it,idx)=>`
+          <div class="chk-item${it.loaded?' done':''}">
+            <input type="checkbox" ${it.loaded?'checked':''} data-action="toggle-item" data-order-id="${order.id}" data-idx="${idx}"/>
+            <span class="iname" style="flex:1">${esc(it.name)}</span>
+            <span style="color:#5a6080;font-size:13px">×${it.quantity}</span>
+            <span style="font-weight:600;min-width:60px;text-align:right">$${fmt(it.price*it.quantity)}</span>
+          </div>`).join('')}
           <div class="btn-row" style="margin-top:12px">
-            ${!allDone?html`<button class="btn btn-success btn-sm" onClick=${()=>markAll(order)}>Mark All Loaded</button>`:null}
-            <button class="btn btn-danger btn-sm" onClick=${()=>del(order.id)}>Delete Order</button>
+            ${!allDone?`<button class="btn success sm" data-action="mark-all" data-id="${order.id}">Mark All Loaded</button>`:''}
+            <button class="btn danger sm" data-action="del-order" data-id="${order.id}">Delete Order</button>
           </div>
-        </div>`:null}
+        </div>
       </div>`;
-    })}
-  </div>`;
+    }).join('')}`;
 }
 
-// ── App ────────────────────────────────────────────────────
-function App() {
-  const [tab, setTab] = useState('dashboard');
-  const [products, setProducts] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [customers, setCustomers] = useState([]);
-  const [stats, setStats] = useState({});
-  const {list, show: toast, dismiss} = useToast();
-  const {confirm, modal} = useConfirm();
+// ═══════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════
+const TABS = [
+  {id:'dashboard',   label:'Dashboard'},
+  {id:'products',    label:'Products'},
+  {id:'create-order',label:'Create Order'},
+  {id:'orders',      label:'Orders'},
+];
 
-  const fetchAll = useCallback(async () => {
+function render(){
+  // nav
+  document.getElementById('nav').innerHTML = TABS.map(t=>
+    `<button class="nav-btn${S.tab===t.id?' active':''}" data-tab="${t.id}">${t.label}</button>`
+  ).join('');
+
+  // content
+  const main = document.getElementById('main');
+  if(S.tab==='dashboard')    main.innerHTML = dashboardHTML();
+  else if(S.tab==='products')    main.innerHTML = productsHTML();
+  else if(S.tab==='create-order')main.innerHTML = createOrderHTML();
+  else if(S.tab==='orders')      main.innerHTML = ordersHTML();
+
+  attachEvents();
+}
+
+// ═══════════════════════════════════════════════════════════
+// EVENTS
+// ═══════════════════════════════════════════════════════════
+function attachEvents(){
+  // tab nav
+  document.querySelectorAll('[data-tab]').forEach(btn=>{
+    btn.onclick = ()=>{ S.tab=btn.dataset.tab; render(); };
+  });
+
+  // search inputs (live)
+  const ps = document.getElementById('p-search');
+  if(ps) ps.oninput = e=>{ S.p_search=e.target.value; render(); };
+
+  const os = document.getElementById('o-search');
+  if(os) os.oninput = e=>{ S.o_search=e.target.value; render(); };
+
+  // category pills
+  document.querySelectorAll('[data-cat]').forEach(el=>{
+    el.onclick = ()=>{ S.p_cat=el.dataset.cat; render(); };
+  });
+
+  // status filter pills
+  document.querySelectorAll('[data-status-filter]').forEach(el=>{
+    el.onclick = ()=>{ S.o_filter=el.dataset.statusFilter; render(); };
+  });
+
+  // product form inputs (track values so they survive re-render)
+  ['p-name','p-cat-inp','p-price','p-stock'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.oninput = e=>{
+      const key = {' p-name':'name','p-cat-inp':'category','p-price':'price','p-stock':'stock'}[id]||id.replace('p-','');
+      const map = {'p-name':'name','p-cat-inp':'category','p-price':'price','p-stock':'stock'};
+      S.p_form[map[id]] = e.target.value;
+    };
+  });
+
+  // customer autocomplete
+  const cc = document.getElementById('c-cust');
+  if(cc){
+    cc.oninput = e=>{ S.c_cust=e.target.value; S.c_cust_open=true; render(); };
+    cc.onfocus = ()=>{ S.c_cust_open=true; render(); };
+    cc.onblur  = ()=>setTimeout(()=>{ S.c_cust_open=false; render(); },150);
+  }
+
+  // product search autocomplete
+  const cp = document.getElementById('c-prod');
+  if(cp){
+    cp.oninput = e=>{ S.c_prod=e.target.value; S.c_prod_open=true; render(); };
+    cp.onfocus = ()=>{ S.c_prod_open=true; render(); };
+    cp.onblur  = ()=>setTimeout(()=>{ S.c_prod_open=false; render(); },150);
+  }
+
+  // click actions (delegated via data-action)
+  document.querySelectorAll('[data-action]').forEach(el=>{
+    el.onclick = e=>handleAction(e, el);
+  });
+  document.querySelectorAll('[data-action="toggle-item"]').forEach(el=>{
+    el.onchange = e=>handleAction(e,el);
+  });
+}
+
+async function handleAction(e, el){
+  const a = el.dataset.action;
+
+  if(a==='go-orders'){ S.tab='orders'; render(); }
+
+  // ── products ──
+  else if(a==='save-product'){
+    const name = document.getElementById('p-name').value.trim();
+    const cat  = document.getElementById('p-cat-inp').value.trim();
+    const price= parseFloat(document.getElementById('p-price').value);
+    const stock= parseInt(document.getElementById('p-stock').value);
+    if(!name||!cat||isNaN(price)||isNaN(stock)) return toast('All fields required','error');
     try {
-      const [p,o,c,s] = await Promise.all([
-        fetch('/api/products').then(r=>r.json()),
-        fetch('/api/orders').then(r=>r.json()),
-        fetch('/api/customers').then(r=>r.json()),
-        fetch('/api/stats').then(r=>r.json()),
-      ]);
-      setProducts(Array.isArray(p)?p:[]);
-      setOrders(Array.isArray(o)?o:[]);
-      setCustomers(Array.isArray(c)?c:[]);
-      setStats(s&&!s.error?s:{});
-    } catch(err) {
-      toast('Failed to load data','error');
-    }
-  },[]);
+      const url = S.p_editId?'/api/products/'+S.p_editId:'/api/products';
+      await api(url,{method:S.p_editId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,category:cat,price,stock})});
+      toast(S.p_editId?'Product updated':'Product added','success');
+      S.p_editId=null; S.p_form={name:'',category:'',price:'',stock:''};
+      await fetchAll();
+    } catch(err){ toast(err.message,'error'); }
+  }
+  else if(a==='cancel-edit'){ S.p_editId=null; S.p_form={name:'',category:'',price:'',stock:''}; render(); }
+  else if(a==='edit-product'){
+    const p = S.products.find(x=>x.id==el.dataset.id);
+    if(!p) return;
+    S.p_editId=p.id; S.p_form={name:p.name,category:p.category,price:p.price,stock:p.stock}; render();
+  }
+  else if(a==='del-product'){
+    if(!await confirm('Delete "'+el.dataset.name+'"?')) return;
+    try{ await api('/api/products/'+el.dataset.id,{method:'DELETE'}); toast('Deleted','success'); await fetchAll(); }
+    catch(err){ toast(err.message,'error'); }
+  }
 
-  useEffect(()=>{fetchAll();},[]);
+  // ── create order ──
+  else if(a==='pick-cust'){ S.c_cust=el.dataset.val; S.c_cust_open=false; render(); }
+  else if(a==='pick-prod'){
+    const id=parseInt(el.dataset.id), name=el.dataset.name, price=parseFloat(el.dataset.price);
+    const ex = S.c_items.find(i=>i.id===id);
+    if(ex) ex.qty++; else S.c_items.push({id,name,price,qty:1});
+    S.c_prod=''; S.c_prod_open=false; render();
+  }
+  else if(a==='qty-minus'){
+    const id=parseInt(el.dataset.id), it=S.c_items.find(i=>i.id===id);
+    if(it){ it.qty--; if(it.qty<1) S.c_items=S.c_items.filter(i=>i.id!==id); render(); }
+  }
+  else if(a==='qty-plus'){
+    const it=S.c_items.find(i=>i.id===parseInt(el.dataset.id));
+    if(it){ it.qty++; render(); }
+  }
+  else if(a==='remove-item'){ S.c_items=S.c_items.filter(i=>i.id!==parseInt(el.dataset.id)); render(); }
+  else if(a==='place-order'){
+    if(!S.c_cust.trim()) return toast('Customer name required','error');
+    if(!S.c_items.length) return toast('Add at least one item','error');
+    const sub = S.c_items.reduce((s,i)=>s+i.price*i.qty,0);
+    const tax = sub*TAX, total=sub+tax;
+    try{
+      await api('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        customer_name:S.c_cust.trim(),
+        items:S.c_items.map(i=>({id:i.id,name:i.name,price:i.price,quantity:i.qty})),
+        subtotal:sub,tax,total
+      })});
+      toast('Order created!','success');
+      S.c_cust=''; S.c_items=[];
+      await fetchAll();
+    } catch(err){ toast(err.message,'error'); }
+  }
 
-  const tabs = [{id:'dashboard',label:'Dashboard'},{id:'products',label:'Products'},{id:'create-order',label:'Create Order'},{id:'orders',label:'Orders'}];
-
-  return html`<div>
-    <${Toasts} list=${list} dismiss=${dismiss}/>
-    ${modal}
-    <header class="app-header">
-      <div class="header-logo">P. Ketwaroo &amp; Sons</div>
-      <div class="header-sub">Inventory Management System</div>
-    </header>
-    <nav class="app-nav">
-      <div class="nav-inner">
-        ${tabs.map(t=>html`<button key=${t.id} class=${'nav-tab'+(tab===t.id?' nav-tab-active':'')} onClick=${()=>setTab(t.id)}>${t.label}</button>`)}
-      </div>
-    </nav>
-    <main class="app-main">
-      ${tab==='dashboard'    ? html`<${DashboardTab}   stats=${stats} orders=${orders} onTab=${setTab}/>` : null}
-      ${tab==='products'     ? html`<${ProductsTab}    products=${products} onRefresh=${fetchAll} toast=${toast} confirm=${confirm}/>` : null}
-      ${tab==='create-order' ? html`<${CreateOrderTab} products=${products} customers=${customers} onDone=${fetchAll} toast=${toast}/>` : null}
-      ${tab==='orders'       ? html`<${OrdersTab}      orders=${orders} onRefresh=${fetchAll} toast=${toast} confirm=${confirm}/>` : null}
-    </main>
-  </div>`;
+  // ── orders ──
+  else if(a==='toggle-order'){
+    const id=parseInt(el.dataset.id);
+    S.o_expanded = S.o_expanded===id?null:id; render();
+  }
+  else if(a==='toggle-item'){
+    const orderId=parseInt(el.dataset.orderId), idx=parseInt(el.dataset.idx);
+    const order = S.orders.find(o=>o.id===orderId);
+    if(!order) return;
+    const items = parseItems(order.items).map((it,i)=>i===idx?{...it,loaded:!it.loaded}:it);
+    const status = items.every(it=>it.loaded)?'loaded':'pending';
+    order.items=JSON.stringify(items); order.status=status; render();
+    try{ await fetch('/api/orders/'+orderId+'/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,status})}); }
+    catch(err){ toast('Update failed','error'); await fetchAll(); }
+  }
+  else if(a==='mark-all'){
+    const orderId=parseInt(el.dataset.id), order=S.orders.find(o=>o.id===orderId);
+    if(!order) return;
+    const items = parseItems(order.items).map(it=>({...it,loaded:true}));
+    order.items=JSON.stringify(items); order.status='loaded'; render();
+    try{ await fetch('/api/orders/'+orderId+'/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,status:'loaded'})}); toast('Marked as loaded','success'); }
+    catch(err){ toast('Update failed','error'); await fetchAll(); }
+  }
+  else if(a==='del-order'){
+    if(!await confirm('Delete this order?')) return;
+    try{ await api('/api/orders/'+el.dataset.id,{method:'DELETE'}); toast('Deleted','success'); await fetchAll(); }
+    catch(err){ toast(err.message,'error'); }
+  }
 }
 
-render(html`<${App}/>`, document.getElementById('root'));
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+render();
+fetchAll();
 </script>
 </body>
 </html>
