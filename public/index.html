@@ -126,6 +126,9 @@ tr.lowstock td{background:#160e0e}
 .empty{color:#5a6080;padding:16px 0}
 .rec-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1a1e35}
 .rec-row:last-child{border-bottom:none}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
 </style>
 </head>
 <body>
@@ -362,7 +365,7 @@ function createOrderHTML(){
         <div style="flex:1;font-weight:500">${esc(i.name)}</div>
         <div style="display:flex;align-items:center;gap:3px;margin-right:12px">
           <span style="color:#5a6080;font-size:13px">$</span>
-          <input class="input" id="c-price-${i.id}" type="number" step="0.01" min="0" value="${fmt(i.price)}" style="width:68px;padding:4px 8px;font-size:13px"/>
+          <input class="input" id="c-price-${i.id}" type="number" step="0.01" min="0" value="${fmt(i.price)}" style="width:100px;padding:6px 10px;font-size:14px"/>
           <span style="color:#5a6080;font-size:13px">ea</span>
         </div>
         <button class="qty-btn" data-action="qty-minus" data-id="${i.id}">−</button>
@@ -533,8 +536,13 @@ function attachEvents(){
     };
   });
 
-  // click actions (delegated via data-action)
-  document.querySelectorAll('[data-action]').forEach(el=>{
+  // dropdown picks: use onmousedown + preventDefault so blur can't close the list first
+  document.querySelectorAll('[data-action="pick-cust"],[data-action="pick-prod"]').forEach(el=>{
+    el.onmousedown = e=>{ e.preventDefault(); handleAction(e, el); };
+  });
+
+  // all other click actions
+  document.querySelectorAll('[data-action]:not([data-action="pick-cust"]):not([data-action="pick-prod"])').forEach(el=>{
     el.onclick = e=>handleAction(e, el);
   });
   document.querySelectorAll('[data-action="toggle-item"]').forEach(el=>{
