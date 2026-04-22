@@ -516,7 +516,7 @@ function attachEvents(){
   if(cc){
     cc.oninput = e=>{ S.c_cust=e.target.value; S.c_cust_open=true; render(); };
     cc.onfocus = ()=>{ if(_restoringFocus) return; S.c_cust_open=true; render(); };
-    cc.onblur  = ()=>setTimeout(()=>{ S.c_cust_open=false; render(); },150);
+    cc.onblur  = ()=>setTimeout(()=>{ if(S.c_cust_open){ S.c_cust_open=false; render(); } },150);
   }
 
   // product search autocomplete
@@ -524,13 +524,13 @@ function attachEvents(){
   if(cp){
     cp.oninput = e=>{ S.c_prod=e.target.value; S.c_prod_open=true; render(); };
     cp.onfocus = ()=>{ if(_restoringFocus) return; S.c_prod_open=true; render(); };
-    cp.onblur  = ()=>setTimeout(()=>{ S.c_prod_open=false; render(); },150);
+    cp.onblur  = ()=>setTimeout(()=>{ if(S.c_prod_open){ S.c_prod_open=false; render(); } },150);
   }
 
   // editable price inputs on order items
   S.c_items.forEach(item => {
     const pel = document.getElementById('c-price-'+item.id);
-    if(pel) pel.oninput = e => {
+    if(pel) pel.onblur = e => {
       const val = parseFloat(e.target.value);
       if(!isNaN(val) && val >= 0){ item.price = val; render(); }
     };
