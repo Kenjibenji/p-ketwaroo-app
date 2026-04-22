@@ -204,6 +204,69 @@ app.patch('/api/orders/:id/items', async (req, res) => {
   }
 });
 
+app.put('/api/orders/:id', async (req, res) => {
+  const { id } = req.params;
+  const { items } = req.body;
+  if (!items || !Array.isArray(items) || items.length === 0)
+    return res.status(400).json({ error: 'At least one item is required' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const orderRes = await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE', [id]);
+    if (!orderRes.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    let oldItems = orderRes.rows[0].items;
+    if (typeof oldItems === 'string') try { oldItems = JSON.parse(oldItems); } catch { oldItems = []; }
+    if (!Array.isArray(oldItems)) oldItems = [];
+
+    // Build qty maps and reconcile stock
+    const oldQty = {}, newQty = {};
+    for (const it of oldItems) oldQty[it.id] = (oldQty[it.id] || 0) + (it.quantity || 0);
+    for (const it of items)    newQty[it.id] = (newQty[it.id] || 0) + (it.quantity || 0);
+
+    const allPids = new Set([...Object.keys(oldQty), ...Object.keys(newQty)].map(Number));
+    for (const pid of allPids) {
+      const delta = (newQty[pid] || 0) - (oldQty[pid] || 0);
+      if (delta === 0) continue;
+      if (delta > 0) {
+        const sr = await client.query('SELECT stock, name FROM products WHERE id=$1 FOR UPDATE', [pid]);
+        if (!sr.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Product not found' }); }
+        if (sr.rows[0].stock < delta) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: `Not enough stock for "${sr.rows[0].name}". Available: ${sr.rows[0].stock}` });
+        }
+        await client.query('UPDATE products SET stock = stock - $1 WHERE id=$2', [delta, pid]);
+      } else {
+        await client.query('UPDATE products SET stock = stock + $1 WHERE id=$2', [-delta, pid]);
+      }
+    }
+
+    // Preserve loaded flags from old items
+    const oldLoaded = {};
+    for (const it of oldItems) oldLoaded[it.id] = it.loaded || false;
+    const updated = items.map(it => ({ ...it, loaded: oldLoaded[it.id] || false }));
+    const total = updated.reduce((s, it) => s + parseFloat(it.price) * parseInt(it.quantity), 0);
+    const status = updated.every(it => it.loaded) ? 'loaded' : 'pending';
+
+    const result = await client.query(
+      `UPDATE orders SET items=$1, subtotal=$2, tax=0, total=$3, status=$4 WHERE id=$5 RETURNING *`,
+      [JSON.stringify(updated), total, total, status, id]
+    );
+    await client.query('COMMIT');
+    res.json(result.rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update order' });
+  } finally {
+    client.release();
+  }
+});
+
 app.delete('/api/orders/:id', async (req, res) => {
   const { id } = req.params;
   try {

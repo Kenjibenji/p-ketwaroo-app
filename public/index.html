@@ -166,6 +166,9 @@ const S = {
   p_form: {name:'',category:'',price:'',stock:''},
   // orders tab
   o_search: '', o_filter: 'all', o_expanded: null,
+  o_editing: null, o_edit_items: [], o_edit_prod: '', o_edit_prod_open: false,
+  // reports tab
+  r_period: 'week',
   // create order tab
   c_cust: '', c_prod: '', c_items: [],
   c_cust_open: false, c_prod_open: false,
@@ -400,6 +403,60 @@ function ordersHTML(){
       const items = parseItems(order.items);
       const open = S.o_expanded===order.id;
       const allDone = items.length>0&&items.every(i=>i.loaded);
+      const isEditing = S.o_editing===order.id;
+
+      const eProdSug = isEditing ? S.products.filter(p=>
+        S.o_edit_prod.length>0 && p.name.toLowerCase().includes(S.o_edit_prod.toLowerCase()) && p.stock>0
+      ) : [];
+      const editTotal = S.o_edit_items.reduce((s,i)=>s+i.price*i.quantity,0);
+
+      const bodyContent = isEditing ? `
+        ${S.o_edit_items.length===0?'<p class="empty">No items. Search below to add.</p>':
+          S.o_edit_items.map(i=>`
+          <div class="oi-row">
+            <div style="flex:1;font-weight:500">${esc(i.name)}</div>
+            <div style="display:flex;align-items:center;gap:3px;margin-right:12px">
+              <span style="color:#8b96b8;font-size:13px">$</span>
+              <input class="input" id="oe-price-${i.id}" type="number" step="0.01" min="0" value="${fmt(i.price)}" style="width:100px;padding:6px 10px;font-size:14px"/>
+              <span style="color:#8b96b8;font-size:13px">ea</span>
+            </div>
+            <button class="qty-btn" data-action="oe-qty-minus" data-id="${i.id}">−</button>
+            <span style="min-width:28px;text-align:center;font-weight:600">${i.quantity}</span>
+            <button class="qty-btn" data-action="oe-qty-plus" data-id="${i.id}">+</button>
+            <div style="min-width:70px;text-align:right;font-weight:600">$${fmt(i.price*i.quantity)}</div>
+            <button class="btn danger xs" style="margin-left:8px" data-action="oe-remove" data-id="${i.id}">✕</button>
+          </div>`).join('')}
+        <div class="fg" style="margin:14px 0 8px">
+          <label>Add Product</label>
+          <div class="ac-wrap">
+            <input class="input" id="oe-prod" value="${esc(S.o_edit_prod)}" placeholder="Search products…" autocomplete="off"/>
+            <div class="ac-drop${S.o_edit_prod_open&&eProdSug.length>0?' open':''}" id="oe-prod-drop">
+              ${eProdSug.map(p=>`<div class="ac-item" data-action="oe-pick-prod" data-id="${p.id}" data-name="${esc(p.name)}" data-price="${p.price}">
+                ${esc(p.name)} — $${fmt(p.price)} <span style="color:#8b96b8">(stock: ${p.stock})</span>
+              </div>`).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="total-bar">
+          <div><span class="total-lbl" style="margin-right:8px">Total</span><span class="total-val">$${fmt(editTotal)}</span></div>
+        </div>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="btn success sm" data-action="save-edit-order" data-id="${order.id}">Save Changes</button>
+          <button class="btn ghost sm" data-action="cancel-edit-order">Cancel</button>
+        </div>` : `
+        ${items.map((it,idx)=>`
+        <div class="chk-item${it.loaded?' done':''}">
+          <input type="checkbox" ${it.loaded?'checked':''} data-action="toggle-item" data-order-id="${order.id}" data-idx="${idx}"/>
+          <span class="iname" style="flex:1">${esc(it.name)}</span>
+          <span style="color:#8b96b8;font-size:13px">×${it.quantity}</span>
+          <span style="font-weight:600;min-width:60px;text-align:right">$${fmt(it.price*it.quantity)}</span>
+        </div>`).join('')}
+        <div class="btn-row" style="margin-top:12px">
+          <button class="btn ghost sm" data-action="start-edit-order" data-id="${order.id}">Edit Order</button>
+          ${!allDone?`<button class="btn success sm" data-action="mark-all" data-id="${order.id}">Mark All Loaded</button>`:''}
+          <button class="btn danger sm" data-action="del-order" data-id="${order.id}">Delete Order</button>
+        </div>`;
+
       return `
       <div class="ord-card">
         <div class="ord-hdr" data-action="toggle-order" data-id="${order.id}">
@@ -413,21 +470,68 @@ function ordersHTML(){
             <span style="color:#8b96b8">${open?'▲':'▼'}</span>
           </div>
         </div>
-        <div class="ord-body${open?' open':''}">
-          ${items.map((it,idx)=>`
-          <div class="chk-item${it.loaded?' done':''}">
-            <input type="checkbox" ${it.loaded?'checked':''} data-action="toggle-item" data-order-id="${order.id}" data-idx="${idx}"/>
-            <span class="iname" style="flex:1">${esc(it.name)}</span>
-            <span style="color:#8b96b8;font-size:13px">×${it.quantity}</span>
-            <span style="font-weight:600;min-width:60px;text-align:right">$${fmt(it.price*it.quantity)}</span>
-          </div>`).join('')}
-          <div class="btn-row" style="margin-top:12px">
-            ${!allDone?`<button class="btn success sm" data-action="mark-all" data-id="${order.id}">Mark All Loaded</button>`:''}
-            <button class="btn danger sm" data-action="del-order" data-id="${order.id}">Delete Order</button>
-          </div>
+        <div class="ord-body${open||isEditing?' open':''}">
+          ${bodyContent}
         </div>
       </div>`;
     }).join('')}`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// REPORTS
+// ═══════════════════════════════════════════════════════════
+function computeReports(){
+  const now = new Date();
+  const filtered = S.orders.filter(o=>{
+    const d = new Date(o.created_at);
+    if(S.r_period==='today') return d.toDateString()===now.toDateString();
+    if(S.r_period==='week')  return d >= new Date(now - 7*24*60*60*1000);
+    if(S.r_period==='month') return d >= new Date(now - 30*24*60*60*1000);
+    return true;
+  });
+  const revenue = filtered.reduce((s,o)=>s+parseFloat(o.total||0),0);
+  const avgOrder = filtered.length ? revenue/filtered.length : 0;
+  const prodMap = {};
+  for(const order of filtered){
+    for(const it of parseItems(order.items)){
+      if(!prodMap[it.name]) prodMap[it.name]={name:it.name,units:0,revenue:0};
+      prodMap[it.name].units += (it.quantity||0);
+      prodMap[it.name].revenue += (parseFloat(it.price)||0)*(it.quantity||0);
+    }
+  }
+  const top = Object.values(prodMap).sort((a,b)=>b.revenue-a.revenue).slice(0,15);
+  return {orderCount:filtered.length, revenue, avgOrder, top};
+}
+
+function reportsHTML(){
+  const {orderCount,revenue,avgOrder,top} = computeReports();
+  const maxRev = top[0]?.revenue || 1;
+  const periods = [{id:'today',label:'Today'},{id:'week',label:'7 Days'},{id:'month',label:'30 Days'},{id:'all',label:'All Time'}];
+  return `
+  <div class="pills">
+    ${periods.map(p=>`<div class="pill${S.r_period===p.id?' active':''}" data-r-period="${p.id}">${p.label}</div>`).join('')}
+  </div>
+  <div class="stats">
+    <div class="stat green"><div class="stat-icon">💰</div><div><div class="stat-val">$${fmt(revenue)}</div><div class="stat-lbl">Revenue</div></div></div>
+    <div class="stat blue"><div class="stat-icon">📦</div><div><div class="stat-val">${orderCount}</div><div class="stat-lbl">Orders</div></div></div>
+    <div class="stat amber"><div class="stat-icon">📊</div><div><div class="stat-val">$${fmt(avgOrder)}</div><div class="stat-lbl">Avg Order</div></div></div>
+  </div>
+  <div class="card">
+    <div class="sec-title">Top Products by Revenue</div>
+    ${top.length===0?'<p class="empty">No orders in this period.</p>':top.map(p=>`
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <span style="font-weight:500">${esc(p.name)}</span>
+        <div style="display:flex;gap:16px;font-size:13px">
+          <span style="color:#8b96b8">${p.units} units</span>
+          <span style="font-weight:600">$${fmt(p.revenue)}</span>
+        </div>
+      </div>
+      <div style="background:#1a1e35;border-radius:3px;height:6px;overflow:hidden">
+        <div style="background:#5b8ff0;height:100%;width:${Math.round(p.revenue/maxRev*100)}%;border-radius:3px;transition:width .3s"></div>
+      </div>
+    </div>`).join('')}
+  </div>`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -438,6 +542,7 @@ const TABS = [
   {id:'products',    label:'Products'},
   {id:'create-order',label:'Create Order'},
   {id:'orders',      label:'Orders'},
+  {id:'reports',     label:'Reports'},
 ];
 
 function render(){
@@ -456,6 +561,7 @@ function render(){
   else if(S.tab==='products')     main.innerHTML = productsHTML();
   else if(S.tab==='create-order') main.innerHTML = createOrderHTML();
   else if(S.tab==='orders')       main.innerHTML = ordersHTML();
+  else if(S.tab==='reports')      main.innerHTML = reportsHTML();
 
   attachEvents();
 
@@ -532,13 +638,35 @@ function attachEvents(){
     };
   });
 
+  // edit-order product search autocomplete
+  const oep = document.getElementById('oe-prod');
+  if(oep){
+    oep.oninput = e=>{ S.o_edit_prod=e.target.value; S.o_edit_prod_open=true; render(); };
+    oep.onfocus = ()=>{ if(_restoringFocus) return; S.o_edit_prod_open=true; render(); };
+    oep.onblur  = ()=>setTimeout(()=>{ if(S.o_edit_prod_open){ S.o_edit_prod_open=false; render(); } },150);
+  }
+
+  // editable price inputs on edit-order items (onblur to avoid cursor issues with type=number)
+  S.o_edit_items.forEach(item=>{
+    const pel = document.getElementById('oe-price-'+item.id);
+    if(pel) pel.onblur = e=>{
+      const val = parseFloat(e.target.value);
+      if(!isNaN(val) && val>=0){ item.price=val; render(); }
+    };
+  });
+
+  // reports period pills
+  document.querySelectorAll('[data-r-period]').forEach(el=>{
+    el.onclick = ()=>{ S.r_period=el.dataset.rPeriod; render(); };
+  });
+
   // dropdown picks: use onmousedown + preventDefault so blur can't close the list first
-  document.querySelectorAll('[data-action="pick-cust"],[data-action="pick-prod"]').forEach(el=>{
+  document.querySelectorAll('[data-action="pick-cust"],[data-action="pick-prod"],[data-action="oe-pick-prod"]').forEach(el=>{
     el.onmousedown = e=>{ e.preventDefault(); handleAction(e, el); };
   });
 
   // all other click actions
-  document.querySelectorAll('[data-action]:not([data-action="pick-cust"]):not([data-action="pick-prod"])').forEach(el=>{
+  document.querySelectorAll('[data-action]:not([data-action="pick-cust"]):not([data-action="pick-prod"]):not([data-action="oe-pick-prod"])').forEach(el=>{
     el.onclick = e=>handleAction(e, el);
   });
   document.querySelectorAll('[data-action="toggle-item"]').forEach(el=>{
@@ -614,7 +742,46 @@ async function handleAction(e, el){
   // ── orders ──
   else if(a==='toggle-order'){
     const id=parseInt(el.dataset.id);
+    if(S.o_editing && S.o_editing!==id){ S.o_editing=null; S.o_edit_items=[]; S.o_edit_prod=''; }
     S.o_expanded = S.o_expanded===id?null:id; render();
+  }
+  else if(a==='start-edit-order'){
+    const orderId=parseInt(el.dataset.id);
+    const order=S.orders.find(o=>o.id===orderId);
+    if(!order) return;
+    S.o_editing=orderId;
+    S.o_edit_items=parseItems(order.items).map(i=>({id:i.id,name:i.name,price:parseFloat(i.price)||0,quantity:parseInt(i.quantity)||0}));
+    S.o_edit_prod=''; S.o_edit_prod_open=false; S.o_expanded=orderId; render();
+  }
+  else if(a==='cancel-edit-order'){
+    S.o_editing=null; S.o_edit_items=[]; S.o_edit_prod=''; render();
+  }
+  else if(a==='oe-qty-minus'){
+    const id=parseInt(el.dataset.id), it=S.o_edit_items.find(i=>i.id===id);
+    if(it){ it.quantity--; if(it.quantity<1) S.o_edit_items=S.o_edit_items.filter(i=>i.id!==id); render(); }
+  }
+  else if(a==='oe-qty-plus'){
+    const id=parseInt(el.dataset.id), it=S.o_edit_items.find(i=>i.id===id);
+    if(it){ it.quantity++; render(); }
+  }
+  else if(a==='oe-remove'){
+    S.o_edit_items=S.o_edit_items.filter(i=>i.id!==parseInt(el.dataset.id)); render();
+  }
+  else if(a==='oe-pick-prod'){
+    const id=parseInt(el.dataset.id), name=el.dataset.name, price=parseFloat(el.dataset.price);
+    const ex=S.o_edit_items.find(i=>i.id===id);
+    if(ex) ex.quantity++; else S.o_edit_items.push({id,name,price,quantity:1});
+    S.o_edit_prod=''; S.o_edit_prod_open=false; render();
+  }
+  else if(a==='save-edit-order'){
+    const orderId=parseInt(el.dataset.id);
+    if(!S.o_edit_items.length) return toast('Add at least one item','error');
+    try{
+      await api('/api/orders/'+orderId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:S.o_edit_items})});
+      S.o_editing=null; S.o_edit_items=[]; S.o_edit_prod='';
+      toast('Order updated','success');
+      await fetchAll();
+    } catch(err){ toast(err.message,'error'); }
   }
   else if(a==='toggle-item'){
     const orderId=parseInt(el.dataset.orderId), idx=parseInt(el.dataset.idx);
