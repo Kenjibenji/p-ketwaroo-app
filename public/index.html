@@ -172,8 +172,6 @@ const S = {
 };
 
 let _restoringFocus = false;
-
-const TAX = 0.15;
 const fmt = n => parseFloat(n||0).toFixed(2);
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function parseItems(v){ if(Array.isArray(v))return v; try{return JSON.parse(v);}catch(e){return[];} }
@@ -332,9 +330,7 @@ function createOrderHTML(){
   const custSug = S.customers.filter(c=>S.c_cust.length>0&&c.toLowerCase().includes(S.c_cust.toLowerCase()));
   const prodSug = S.products.filter(p=>S.c_prod.length>0&&p.name.toLowerCase().includes(S.c_prod.toLowerCase())&&p.stock>0);
   const items = S.c_items;
-  const subtotal = items.reduce((s,i)=>s+i.price*i.qty,0);
-  const tax = subtotal*TAX;
-  const total = subtotal+tax;
+  const total = items.reduce((s,i)=>s+i.price*i.qty,0);
   return `
   <div class="card">
     <div class="sec-title">New Order</div>
@@ -375,7 +371,6 @@ function createOrderHTML(){
         <button class="btn danger xs" style="margin-left:8px" data-action="remove-item" data-id="${i.id}">✕</button>
       </div>`).join('')}
       <div class="total-bar">
-        <div class="total-lbl">Subtotal $${fmt(subtotal)} &nbsp;·&nbsp; Tax 15% $${fmt(tax)}</div>
         <div><span class="total-lbl" style="margin-right:8px">Total</span><span class="total-val">$${fmt(total)}</span></div>
       </div>
       <div style="margin-top:16px">
@@ -603,13 +598,12 @@ async function handleAction(e, el){
   else if(a==='place-order'){
     if(!S.c_cust.trim()) return toast('Customer name required','error');
     if(!S.c_items.length) return toast('Add at least one item','error');
-    const sub = S.c_items.reduce((s,i)=>s+i.price*i.qty,0);
-    const tax = sub*TAX, total=sub+tax;
+    const total = S.c_items.reduce((s,i)=>s+i.price*i.qty,0);
     try{
       await api('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         customer_name:S.c_cust.trim(),
         items:S.c_items.map(i=>({id:i.id,name:i.name,price:i.price,quantity:i.qty})),
-        subtotal:sub,tax,total
+        subtotal:total,tax:0,total
       })});
       toast('Order created!','success');
       S.c_cust=''; S.c_items=[];
