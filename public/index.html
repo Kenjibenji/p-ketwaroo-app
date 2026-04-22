@@ -368,7 +368,7 @@ function createOrderHTML(){
           <span style="color:#8b96b8;font-size:13px">ea</span>
         </div>
         <button class="qty-btn" data-action="qty-minus" data-id="${i.id}">−</button>
-        <span style="min-width:28px;text-align:center;font-weight:600">${i.qty}</span>
+        <input class="input" id="c-qty-${i.id}" type="number" min="1" value="${i.qty}" style="width:52px;padding:4px 6px;text-align:center;font-weight:600"/>
         <button class="qty-btn" data-action="qty-plus" data-id="${i.id}">+</button>
         <div style="min-width:70px;text-align:right;font-weight:600">$${fmt(i.price*i.qty)}</div>
         <button class="btn danger xs" style="margin-left:8px" data-action="remove-item" data-id="${i.id}">✕</button>
@@ -421,7 +421,7 @@ function ordersHTML(){
               <span style="color:#8b96b8;font-size:13px">ea</span>
             </div>
             <button class="qty-btn" data-action="oe-qty-minus" data-id="${i.id}">−</button>
-            <span style="min-width:28px;text-align:center;font-weight:600">${i.quantity}</span>
+            <input class="input" id="oe-qty-${i.id}" type="number" min="1" value="${i.quantity}" style="width:52px;padding:4px 6px;text-align:center;font-weight:600"/>
             <button class="qty-btn" data-action="oe-qty-plus" data-id="${i.id}">+</button>
             <div style="min-width:70px;text-align:right;font-weight:600">$${fmt(i.price*i.quantity)}</div>
             <button class="btn danger xs" style="margin-left:8px" data-action="oe-remove" data-id="${i.id}">✕</button>
@@ -636,6 +636,12 @@ function attachEvents(){
       const val = parseFloat(e.target.value);
       if(!isNaN(val) && val >= 0){ item.price = val; render(); }
     };
+    const qel = document.getElementById('c-qty-'+item.id);
+    if(qel) qel.onblur = e => {
+      const val = parseInt(e.target.value);
+      if(!isNaN(val) && val > 0){ item.qty = val; render(); }
+      else if(!isNaN(val) && val <= 0){ S.c_items = S.c_items.filter(i=>i.id!==item.id); render(); }
+    };
   });
 
   // edit-order product search autocomplete
@@ -646,12 +652,18 @@ function attachEvents(){
     oep.onblur  = ()=>setTimeout(()=>{ if(S.o_edit_prod_open){ S.o_edit_prod_open=false; render(); } },150);
   }
 
-  // editable price inputs on edit-order items (onblur to avoid cursor issues with type=number)
+  // editable price + qty inputs on edit-order items (onblur to avoid cursor issues with type=number)
   S.o_edit_items.forEach(item=>{
     const pel = document.getElementById('oe-price-'+item.id);
     if(pel) pel.onblur = e=>{
       const val = parseFloat(e.target.value);
       if(!isNaN(val) && val>=0){ item.price=val; render(); }
+    };
+    const qel = document.getElementById('oe-qty-'+item.id);
+    if(qel) qel.onblur = e=>{
+      const val = parseInt(e.target.value);
+      if(!isNaN(val) && val>0){ item.quantity=val; render(); }
+      else if(!isNaN(val) && val<=0){ S.o_edit_items=S.o_edit_items.filter(i=>i.id!==item.id); render(); }
     };
   });
 
