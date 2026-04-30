@@ -207,6 +207,75 @@ function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 function parseItems(v){ if(Array.isArray(v))return v; try{return JSON.parse(v);}catch(e){return[];} }
 
 // ═══════════════════════════════════════════════════════════
+// SHARE ORDER (WhatsApp + PDF)
+// ═══════════════════════════════════════════════════════════
+function formatOrderText(order){
+  const items = parseItems(order.items);
+  const date = new Date(order.created_at).toLocaleDateString();
+  const lines = [
+    `*P. Ketwaroo & Sons*`,
+    `Order #${order.id} — ${date}`,
+    `Customer: ${order.customer_name}`,
+    ``,
+    ...items.map(i => `• ${i.quantity}× ${i.name} @ $${fmt(i.price)} = $${fmt(i.price*i.quantity)}`),
+    ``,
+    `*Total: $${fmt(order.total)}*`,
+    `Status: ${(order.status||'pending')==='loaded'?'Loaded':'Pending'}`
+  ];
+  return lines.join('\n');
+}
+
+function shareWhatsApp(order){
+  const text = encodeURIComponent(formatOrderText(order));
+  window.open(`https://wa.me/?text=${text}`, '_blank');
+}
+
+function sharePDF(order){
+  const items = parseItems(order.items);
+  const date = new Date(order.created_at).toLocaleString();
+  const status = (order.status||'pending')==='loaded'?'Loaded':'Pending';
+  const rows = items.map(i => `
+    <tr>
+      <td>${esc(i.name)}</td>
+      <td style="text-align:center">${i.quantity}</td>
+      <td style="text-align:right">$${fmt(i.price)}</td>
+      <td style="text-align:right">$${fmt(i.price*i.quantity)}</td>
+    </tr>`).join('');
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Order #${order.id}</title>
+<style>
+  body{font-family:-apple-system,Segoe UI,Arial,sans-serif;padding:28px;color:#000;max-width:640px;margin:0 auto}
+  h1{margin:0 0 4px;font-size:22px}
+  .muted{color:#666;font-size:13px}
+  .meta{margin-top:10px;font-size:14px}
+  table{width:100%;border-collapse:collapse;margin-top:18px}
+  th,td{padding:8px 10px;border-bottom:1px solid #ddd;font-size:14px}
+  th{text-align:left;background:#f5f5f5;font-weight:600}
+  .total{margin-top:18px;font-size:18px;font-weight:700;text-align:right;border-top:2px solid #000;padding-top:10px}
+  .actions{margin-top:28px;text-align:center}
+  .actions button{padding:10px 22px;font-size:14px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;margin:0 4px}
+  @media print{ .actions{display:none} body{padding:12px} }
+</style></head><body>
+  <h1>P. Ketwaroo &amp; Sons</h1>
+  <div class="muted">Order #${order.id} &middot; ${esc(date)}</div>
+  <div class="meta"><strong>Customer:</strong> ${esc(order.customer_name)}</div>
+  <div class="meta"><strong>Status:</strong> ${status}</div>
+  <table>
+    <thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="total">Total: $${fmt(order.total)}</div>
+  <div class="actions">
+    <button onclick="window.print()">Print / Save as PDF</button>
+    <button onclick="window.close()" style="background:#6b7280">Close</button>
+  </div>
+</body></html>`;
+  const w = window.open('', '_blank');
+  if(!w){ toast('Popup blocked — allow popups to share PDF','error'); return; }
+  w.document.write(html);
+  w.document.close();
+}
+
+// ═══════════════════════════════════════════════════════════
 // TOAST
 // ═══════════════════════════════════════════════════════════
 function toast(msg, type){
@@ -480,6 +549,8 @@ function ordersHTML(){
         </div>`).join('')}
         <div class="btn-row" style="margin-top:12px">
           <button class="btn ghost sm" data-action="start-edit-order" data-id="${order.id}">Edit Order</button>
+          <button class="btn ghost sm" data-action="share-whatsapp" data-id="${order.id}">📱 WhatsApp</button>
+          <button class="btn ghost sm" data-action="share-pdf" data-id="${order.id}">📄 PDF</button>
           ${!allDone?`<button class="btn success sm" data-action="mark-all" data-id="${order.id}">Mark All Loaded</button>`:''}
           <button class="btn danger sm" data-action="del-order" data-id="${order.id}">Delete Order</button>
         </div>`;
@@ -844,6 +915,14 @@ async function handleAction(e, el){
     if(!await confirm('Delete this order?')) return;
     try{ await api('/api/orders/'+el.dataset.id,{method:'DELETE'}); toast('Deleted','success'); await fetchAll(); }
     catch(err){ toast(err.message,'error'); }
+  }
+  else if(a==='share-whatsapp'){
+    const order = S.orders.find(o=>o.id===parseInt(el.dataset.id));
+    if(order) shareWhatsApp(order);
+  }
+  else if(a==='share-pdf'){
+    const order = S.orders.find(o=>o.id===parseInt(el.dataset.id));
+    if(order) sharePDF(order);
   }
 }
 
