@@ -270,36 +270,31 @@ function buildOrderPDF(order){
 }
 
 async function shareWhatsApp(order){
-  const text = formatOrderText(order);
   const pdfBlob = buildOrderPDF(order);
-
-  if(pdfBlob){
-    const fname = `order-${order.id}-${(order.customer_name||'').replace(/[^a-z0-9]+/gi,'-').toLowerCase()}.pdf`;
-    const file = new File([pdfBlob], fname, { type:'application/pdf' });
-
-    if(navigator.canShare && navigator.canShare({ files: [file] })){
-      try {
-        await navigator.share({
-          files: [file],
-          title: `Order #${order.id} — ${order.customer_name}`,
-          text,
-        });
-        return;
-      } catch(err){
-        if(err && err.name === 'AbortError') return;
-      }
-    }
-
-    // Fallback (desktop / unsupported): download PDF, then open WhatsApp with text
-    const url = URL.createObjectURL(pdfBlob);
-    const a = document.createElement('a');
-    a.href = url; a.download = fname;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url), 1000);
-    toast('PDF downloaded — attach it in WhatsApp','info');
+  if(!pdfBlob){
+    toast('PDF still loading — try again in a sec','error');
+    return;
   }
 
-  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  const fname = `order-${order.id}-${(order.customer_name||'').replace(/[^a-z0-9]+/gi,'-').toLowerCase()}.pdf`;
+  const file = new File([pdfBlob], fname, { type:'application/pdf' });
+
+  if(navigator.canShare && navigator.canShare({ files: [file] })){
+    try {
+      await navigator.share({ files: [file], title: `Order #${order.id}` });
+      return;
+    } catch(err){
+      if(err && err.name === 'AbortError') return;
+    }
+  }
+
+  // Desktop / unsupported: download PDF and let user attach manually
+  const url = URL.createObjectURL(pdfBlob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  toast('PDF saved — open WhatsApp and attach it','info');
 }
 
 function sharePDF(order){
