@@ -223,9 +223,12 @@ app.patch('/api/orders/:id/customer', async (req, res) => {
 
 app.put('/api/orders/:id', async (req, res) => {
   const { id } = req.params;
-  const { items } = req.body;
+  const { items, customer_name } = req.body;
   if (!items || !Array.isArray(items) || items.length === 0)
     return res.status(400).json({ error: 'At least one item is required' });
+  const newName = typeof customer_name === 'string' ? customer_name.trim() : null;
+  if (customer_name !== undefined && !newName)
+    return res.status(400).json({ error: 'customer_name cannot be empty' });
 
   const client = await pool.connect();
   try {
@@ -269,10 +272,15 @@ app.put('/api/orders/:id', async (req, res) => {
     const total = updated.reduce((s, it) => s + parseFloat(it.price) * parseInt(it.quantity), 0);
     const status = updated.every(it => it.loaded) ? 'loaded' : 'pending';
 
-    const result = await client.query(
-      `UPDATE orders SET items=$1, subtotal=$2, tax=0, total=$3, status=$4 WHERE id=$5 RETURNING *`,
-      [JSON.stringify(updated), total, total, status, id]
-    );
+    const result = newName
+      ? await client.query(
+          `UPDATE orders SET items=$1, subtotal=$2, tax=0, total=$3, status=$4, customer_name=$5 WHERE id=$6 RETURNING *`,
+          [JSON.stringify(updated), total, total, status, newName, id]
+        )
+      : await client.query(
+          `UPDATE orders SET items=$1, subtotal=$2, tax=0, total=$3, status=$4 WHERE id=$5 RETURNING *`,
+          [JSON.stringify(updated), total, total, status, id]
+        );
     await client.query('COMMIT');
     res.json(result.rows[0]);
   } catch (err) {

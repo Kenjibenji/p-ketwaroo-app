@@ -195,6 +195,7 @@ const S = {
   // orders tab
   o_search: '', o_filter: 'all', o_expanded: null,
   o_editing: null, o_edit_items: [], o_edit_prod: '', o_edit_prod_open: false,
+  o_edit_name: '', o_edit_name_open: false,
   // reports tab
   r_period: 'week',
   // create order tab
@@ -573,7 +574,20 @@ function ordersHTML(){
       ) : [];
       const editTotal = S.o_edit_items.reduce((s,i)=>s+i.price*i.quantity,0);
 
+      const eCustSug = isEditing ? S.customers.filter(c=>
+        S.o_edit_name.length>0 && c.toLowerCase().includes(S.o_edit_name.toLowerCase())
+      ) : [];
+
       const bodyContent = isEditing ? `
+        <div class="fg" style="margin-bottom:14px">
+          <label>Customer Name</label>
+          <div class="ac-wrap">
+            <input class="input" id="oe-name" value="${esc(S.o_edit_name)}" placeholder="Type customer name…" autocomplete="off"/>
+            <div class="ac-drop${S.o_edit_name_open&&eCustSug.length>0?' open':''}" id="oe-name-drop">
+              ${eCustSug.map(s=>`<div class="ac-item" data-action="oe-pick-cust" data-val="${esc(s)}">${esc(s)}</div>`).join('')}
+            </div>
+          </div>
+        </div>
         ${S.o_edit_items.length===0?'<p class="empty">No items. Search below to add.</p>':
           S.o_edit_items.map(i=>`
           <div class="oi-row">
@@ -817,6 +831,14 @@ function attachEvents(){
     oep.onblur  = ()=>setTimeout(()=>{ if(S.o_edit_prod_open){ S.o_edit_prod_open=false; render(); } },150);
   }
 
+  // edit-order customer name autocomplete
+  const oen = document.getElementById('oe-name');
+  if(oen){
+    oen.oninput = e=>{ S.o_edit_name=e.target.value; S.o_edit_name_open=true; render(); };
+    oen.onfocus = ()=>{ if(_restoringFocus) return; S.o_edit_name_open=true; render(); };
+    oen.onblur  = ()=>setTimeout(()=>{ if(S.o_edit_name_open){ S.o_edit_name_open=false; render(); } },150);
+  }
+
   // editable price + qty inputs on edit-order items (onblur to avoid cursor issues with type=number)
   S.o_edit_items.forEach(item=>{
     const pel = document.getElementById('oe-price-'+item.id);
@@ -838,12 +860,12 @@ function attachEvents(){
   });
 
   // dropdown picks: use onmousedown + preventDefault so blur can't close the list first
-  document.querySelectorAll('[data-action="pick-cust"],[data-action="pick-prod"],[data-action="oe-pick-prod"]').forEach(el=>{
+  document.querySelectorAll('[data-action="pick-cust"],[data-action="pick-prod"],[data-action="oe-pick-prod"],[data-action="oe-pick-cust"]').forEach(el=>{
     el.onmousedown = e=>{ e.preventDefault(); handleAction(e, el); };
   });
 
   // all other click actions
-  document.querySelectorAll('[data-action]:not([data-action="pick-cust"]):not([data-action="pick-prod"]):not([data-action="oe-pick-prod"])').forEach(el=>{
+  document.querySelectorAll('[data-action]:not([data-action="pick-cust"]):not([data-action="pick-prod"]):not([data-action="oe-pick-prod"]):not([data-action="oe-pick-cust"])').forEach(el=>{
     el.onclick = e=>handleAction(e, el);
   });
   document.querySelectorAll('[data-action="toggle-item"]').forEach(el=>{
@@ -928,11 +950,14 @@ async function handleAction(e, el){
     if(!order) return;
     S.o_editing=orderId;
     S.o_edit_items=parseItems(order.items).map(i=>({id:i.id,name:i.name,price:parseFloat(i.price)||0,quantity:parseInt(i.quantity)||0}));
+    S.o_edit_name=order.customer_name||''; S.o_edit_name_open=false;
     S.o_edit_prod=''; S.o_edit_prod_open=false; S.o_expanded=orderId; render();
   }
   else if(a==='cancel-edit-order'){
-    S.o_editing=null; S.o_edit_items=[]; S.o_edit_prod=''; render();
+    S.o_editing=null; S.o_edit_items=[]; S.o_edit_prod='';
+    S.o_edit_name=''; S.o_edit_name_open=false; render();
   }
+  else if(a==='oe-pick-cust'){ S.o_edit_name=el.dataset.val; S.o_edit_name_open=false; render(); }
   else if(a==='oe-qty-minus'){
     const id=parseInt(el.dataset.id), it=S.o_edit_items.find(i=>i.id===id);
     if(it){ it.quantity--; if(it.quantity<1) S.o_edit_items=S.o_edit_items.filter(i=>i.id!==id); render(); }
@@ -953,9 +978,11 @@ async function handleAction(e, el){
   else if(a==='save-edit-order'){
     const orderId=parseInt(el.dataset.id);
     if(!S.o_edit_items.length) return toast('Add at least one item','error');
+    if(!S.o_edit_name.trim()) return toast('Customer name required','error');
     try{
-      await api('/api/orders/'+orderId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:S.o_edit_items})});
+      await api('/api/orders/'+orderId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:S.o_edit_items,customer_name:S.o_edit_name.trim()})});
       S.o_editing=null; S.o_edit_items=[]; S.o_edit_prod='';
+      S.o_edit_name=''; S.o_edit_name_open=false;
       toast('Order updated','success');
       await fetchAll();
     } catch(err){ toast(err.message,'error'); }
