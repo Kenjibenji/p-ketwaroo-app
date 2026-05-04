@@ -19,6 +19,26 @@ async function runMigrations() {
   await pool.query(`
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'
   `);
+  await pool.query(`
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS amount_paid DECIMAL(10,2) NOT NULL DEFAULT 0
+  `);
+}
+
+function normalizeItems(items, oldLoadedMap) {
+  return items.map(it => {
+    const q = parseInt(it.quantity) || 0;
+    const t = Math.max(0, Math.min(q, parseInt(it.taken) || 0));
+    const wasLoaded = oldLoadedMap ? !!oldLoadedMap[it.id] : false;
+    const incomingLoaded = it.loaded !== undefined ? !!it.loaded : wasLoaded;
+    return {
+      id: it.id,
+      name: it.name,
+      price: parseFloat(it.price) || 0,
+      quantity: q,
+      taken: t,
+      loaded: t >= q ? true : incomingLoaded,
+    };
+  });
 }
 
 pool.query('SELECT NOW()').then(() => {
@@ -130,7 +150,7 @@ app.delete('/api/products/:id', async (req, res) => {
 // ===== ORDERS =====
 
 app.post('/api/orders', async (req, res) => {
-  const { customer_name, items, subtotal, tax, total } = req.body;
+  const { customer_name, items, subtotal, tax, total, amount_paid } = req.body;
   if (!customer_name || !items || !Array.isArray(items) || items.length === 0)
     return res.status(400).json({ error: 'customer_name and at least one item are required' });
 
@@ -157,11 +177,14 @@ app.post('/api/orders', async (req, res) => {
       await client.query('UPDATE products SET stock = stock - $1 WHERE id=$2', [item.quantity, item.id]);
     }
 
-    const itemsWithLoaded = items.map(i => ({ ...i, loaded: false }));
+    const normalized = normalizeItems(items, null);
+    const initialStatus = normalized.every(i => i.loaded) ? 'loaded' : 'pending';
+    const paid = Math.max(0, parseFloat(amount_paid) || 0);
+
     const result = await client.query(
-      `INSERT INTO orders (customer_name, items, subtotal, tax, total, status, created_at)
-       VALUES ($1, $2, $3, $4, $5, 'pending', NOW()) RETURNING *`,
-      [customer_name, JSON.stringify(itemsWithLoaded), subtotal ?? 0, tax ?? 0, total ?? 0]
+      `INSERT INTO orders (customer_name, items, subtotal, tax, total, amount_paid, status, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) RETURNING *`,
+      [customer_name, JSON.stringify(normalized), subtotal ?? 0, tax ?? 0, total ?? 0, paid, initialStatus]
     );
 
     await client.query('COMMIT');
@@ -223,12 +246,13 @@ app.patch('/api/orders/:id/customer', async (req, res) => {
 
 app.put('/api/orders/:id', async (req, res) => {
   const { id } = req.params;
-  const { items, customer_name } = req.body;
+  const { items, customer_name, amount_paid } = req.body;
   if (!items || !Array.isArray(items) || items.length === 0)
     return res.status(400).json({ error: 'At least one item is required' });
   const newName = typeof customer_name === 'string' ? customer_name.trim() : null;
   if (customer_name !== undefined && !newName)
     return res.status(400).json({ error: 'customer_name cannot be empty' });
+  const newPaid = amount_paid !== undefined ? Math.max(0, parseFloat(amount_paid) || 0) : null;
 
   const client = await pool.connect();
   try {
@@ -265,22 +289,21 @@ app.put('/api/orders/:id', async (req, res) => {
       }
     }
 
-    // Preserve loaded flags from old items
     const oldLoaded = {};
     for (const it of oldItems) oldLoaded[it.id] = it.loaded || false;
-    const updated = items.map(it => ({ ...it, loaded: oldLoaded[it.id] || false }));
-    const total = updated.reduce((s, it) => s + parseFloat(it.price) * parseInt(it.quantity), 0);
+    const updated = normalizeItems(items, oldLoaded);
+    const total = updated.reduce((s, it) => s + it.price * it.quantity, 0);
     const status = updated.every(it => it.loaded) ? 'loaded' : 'pending';
 
-    const result = newName
-      ? await client.query(
-          `UPDATE orders SET items=$1, subtotal=$2, tax=0, total=$3, status=$4, customer_name=$5 WHERE id=$6 RETURNING *`,
-          [JSON.stringify(updated), total, total, status, newName, id]
-        )
-      : await client.query(
-          `UPDATE orders SET items=$1, subtotal=$2, tax=0, total=$3, status=$4 WHERE id=$5 RETURNING *`,
-          [JSON.stringify(updated), total, total, status, id]
-        );
+    const setParts = ['items=$1','subtotal=$2','tax=0','total=$3','status=$4'];
+    const params = [JSON.stringify(updated), total, total, status];
+    if (newName !== null) { params.push(newName); setParts.push(`customer_name=$${params.length}`); }
+    if (newPaid !== null) { params.push(newPaid);  setParts.push(`amount_paid=$${params.length}`); }
+    params.push(id);
+    const result = await client.query(
+      `UPDATE orders SET ${setParts.join(', ')} WHERE id=$${params.length} RETURNING *`,
+      params
+    );
     await client.query('COMMIT');
     res.json(result.rows[0]);
   } catch (err) {

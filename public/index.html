@@ -65,6 +65,19 @@ tr.lowstock td{background:#160e0e}
 .badge.out{background:#2e1010;color:#e05252}
 .badge.critical{background:#2e1010;color:#e05252}
 .badge.low{background:#3a2e10;color:#f0a820}
+.badge.paid{background:#0e2e1e;color:#2dc875}
+.badge.partial{background:#3a2e10;color:#f0a820}
+.badge.unpaid{background:#2e1010;color:#e05252}
+.badge.pickup{background:#1e2d4a;color:#5b8ff0}
+
+.pay-opts{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.pay-opt{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #252840;border-radius:6px;cursor:pointer;font-size:13px}
+.pay-opt:hover{border-color:#3a3f5e}
+.pay-opt.active{border-color:#5b8ff0;background:#1a2138}
+.pay-opt input[type=radio]{margin:0}
+.pay-opt input[type=number]{margin-left:auto;width:110px}
+.taken-wrap{display:flex;align-items:center;gap:4px;color:#8b96b8;font-size:11px}
+.taken-wrap input{width:44px;padding:4px 6px;text-align:center;color:#fff;font-weight:600;font-size:13px}
 
 /* pills */
 .pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
@@ -218,11 +231,13 @@ const S = {
   o_search: '', o_filter: 'all', o_expanded: null,
   o_editing: null, o_edit_items: [], o_edit_prod: '', o_edit_prod_open: false,
   o_edit_name: '', o_edit_name_open: false,
+  o_edit_pay_mode: 'unpaid', o_edit_pay_custom: '',
   // reports tab
   r_period: 'week',
   // create order tab
   c_cust: '', c_prod: '', c_items: [],
   c_cust_open: false, c_prod_open: false,
+  c_pay_mode: 'unpaid', c_pay_custom: '',
 };
 
 let _restoringFocus = false;
@@ -236,14 +251,25 @@ function parseItems(v){ if(Array.isArray(v))return v; try{return JSON.parse(v);}
 function formatOrderText(order){
   const items = parseItems(order.items);
   const date = new Date(order.created_at).toLocaleDateString();
+  const total = parseFloat(order.total)||0;
+  const paid = parseFloat(order.amount_paid)||0;
+  const owed = Math.max(0, total - paid);
+  const payLine = paid <= 0 ? `Payment: Unpaid — pay on delivery ($${fmt(total)})`
+    : paid >= total ? `Payment: Paid in full ($${fmt(total)})`
+    : `Payment: $${fmt(paid)} paid · $${fmt(owed)} owed`;
   const lines = [
     `*P. Ketwaroo & Sons*`,
     `Order #${order.id} — ${date}`,
     `Customer: ${order.customer_name}`,
     ``,
-    ...items.map(i => `• ${i.quantity}× ${i.name} @ $${fmt(i.price)} = $${fmt(i.price*i.quantity)}`),
+    ...items.map(i => {
+      const q = parseInt(i.quantity)||0, t = parseInt(i.taken)||0;
+      const tail = t>0 ? (t>=q ? '  (all picked up)' : `  (${t} picked up · ${q-t} to deliver)`) : '';
+      return `• ${q}× ${i.name} @ $${fmt(i.price)} = $${fmt(i.price*q)}${tail}`;
+    }),
     ``,
-    `*Total: $${fmt(order.total)}*`,
+    `*Total: $${fmt(total)}*`,
+    payLine,
     `Status: ${(order.status||'pending')==='loaded'?'Loaded':'Pending'}`
   ];
   return lines.join('\n');
@@ -277,17 +303,39 @@ function buildOrderPDF(order){
   doc.setFont('helvetica','normal');
   for(const it of items){
     if(y > 720){ doc.addPage(); y = 56; }
+    const q = parseInt(it.quantity)||0, t = parseInt(it.taken)||0;
     doc.text(String(it.name).slice(0, 42), 56, y);
-    doc.text(String(it.quantity), 320, y);
+    doc.text(String(q), 320, y);
     doc.text('$'+fmt(it.price), 380, y);
-    doc.text('$'+fmt(it.price * it.quantity), 480, y);
-    y += 16;
+    doc.text('$'+fmt(it.price * q), 480, y);
+    y += 14;
+    if(t > 0){
+      doc.setTextColor(110); doc.setFontSize(9);
+      doc.text(t>=q ? `  (all ${q} picked up at order)` : `  (${t} picked up · ${q-t} to deliver)`, 70, y);
+      doc.setTextColor(0); doc.setFontSize(11);
+      y += 12;
+    }
+    y += 4;
   }
 
   y += 8;
   doc.setLineWidth(1); doc.line(56, y, 540, y); y += 20;
+  const totalNum = parseFloat(order.total)||0;
+  const paidNum = parseFloat(order.amount_paid)||0;
   doc.setFont('helvetica','bold'); doc.setFontSize(14);
-  doc.text(`Total: $${fmt(order.total)}`, 380, y);
+  doc.text(`Total: $${fmt(totalNum)}`, 380, y); y += 18;
+  doc.setFont('helvetica','normal'); doc.setFontSize(11);
+  if(paidNum <= 0){
+    doc.setTextColor(180,60,60);
+    doc.text(`Unpaid — pay on delivery: $${fmt(totalNum)}`, 380, y);
+  } else if(paidNum >= totalNum){
+    doc.setTextColor(40,140,80);
+    doc.text(`Paid in full`, 380, y);
+  } else {
+    doc.setTextColor(180,120,30);
+    doc.text(`Paid: $${fmt(paidNum)}  ·  Owed: $${fmt(totalNum - paidNum)}`, 380, y);
+  }
+  doc.setTextColor(0);
 
   return doc.output('blob');
 }
@@ -324,13 +372,24 @@ function sharePDF(order){
   const items = parseItems(order.items);
   const date = new Date(order.created_at).toLocaleString();
   const status = (order.status||'pending')==='loaded'?'Loaded':'Pending';
-  const rows = items.map(i => `
+  const rows = items.map(i => {
+    const q = parseInt(i.quantity)||0, t = parseInt(i.taken)||0;
+    const note = t>0 ? `<div style="font-size:12px;color:#666">${t>=q?`all ${q} picked up`:`${t} picked up · ${q-t} to deliver`}</div>` : '';
+    return `
     <tr>
-      <td>${esc(i.name)}</td>
-      <td style="text-align:center">${i.quantity}</td>
+      <td>${esc(i.name)}${note}</td>
+      <td style="text-align:center">${q}</td>
       <td style="text-align:right">$${fmt(i.price)}</td>
-      <td style="text-align:right">$${fmt(i.price*i.quantity)}</td>
-    </tr>`).join('');
+      <td style="text-align:right">$${fmt(i.price*q)}</td>
+    </tr>`;
+  }).join('');
+  const totalNum = parseFloat(order.total)||0;
+  const paidNum = parseFloat(order.amount_paid)||0;
+  const payHTML = paidNum<=0
+    ? `<div class="muted" style="color:#b34d4d;font-weight:600;text-align:right">Unpaid — pay on delivery</div>`
+    : paidNum>=totalNum
+    ? `<div class="muted" style="color:#2a8857;font-weight:600;text-align:right">Paid in full</div>`
+    : `<div class="muted" style="color:#b87a1c;font-weight:600;text-align:right">Paid: $${fmt(paidNum)} · Owed: $${fmt(totalNum-paidNum)}</div>`;
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Order #${order.id}</title>
 <style>
   body{font-family:-apple-system,Segoe UI,Arial,sans-serif;padding:28px;color:#000;max-width:640px;margin:0 auto}
@@ -354,6 +413,7 @@ function sharePDF(order){
     <tbody>${rows}</tbody>
   </table>
   <div class="total">Total: $${fmt(order.total)}</div>
+  ${payHTML}
   <div class="actions">
     <button onclick="window.print()">Print / Save as PDF</button>
     <button onclick="window.close()" style="background:#6b7280">Close</button>
@@ -424,6 +484,37 @@ async function fetchAll(){
 // ═══════════════════════════════════════════════════════════
 function statusBadge(status){
   return `<span class="badge ${status==='loaded'?'loaded':'pending'}">${status==='loaded'?'Loaded':'Pending'}</span>`;
+}
+function paymentBadge(paid, total){
+  paid = parseFloat(paid)||0; total = parseFloat(total)||0;
+  if(total > 0 && paid >= total) return '<span class="badge paid">Paid</span>';
+  if(paid > 0) return `<span class="badge partial">Partial $${fmt(paid)}/$${fmt(total)}</span>`;
+  return '<span class="badge unpaid">Unpaid</span>';
+}
+function deliveryBadge(items){
+  let totQ=0, totT=0;
+  for(const i of items){ totQ += parseInt(i.quantity)||0; totT += parseInt(i.taken)||0; }
+  if(totT === 0 || totQ === 0) return '';
+  if(totT >= totQ) return '<span class="badge pickup">All picked up</span>';
+  return `<span class="badge pickup">${totQ-totT} to deliver</span>`;
+}
+function payOptionsHTML(idPrefix, mode, customVal, total){
+  return `
+    <div class="pay-opts">
+      <label class="pay-opt${mode==='unpaid'?' active':''}">
+        <input type="radio" name="${idPrefix}-pay" value="unpaid" ${mode==='unpaid'?'checked':''}/>
+        <span>Pay on delivery</span>
+      </label>
+      <label class="pay-opt${mode==='full'?' active':''}">
+        <input type="radio" name="${idPrefix}-pay" value="full" ${mode==='full'?'checked':''}/>
+        <span>Paid in full <span style="color:#8b96b8">($${fmt(total)})</span></span>
+      </label>
+      <label class="pay-opt${mode==='custom'?' active':''}">
+        <input type="radio" name="${idPrefix}-pay" value="custom" ${mode==='custom'?'checked':''}/>
+        <span>Custom amount</span>
+        <input class="input" id="${idPrefix}-pay-custom" type="number" step="0.01" min="0" value="${esc(customVal)}" placeholder="0.00" ${mode!=='custom'?'disabled':''}/>
+      </label>
+    </div>`;
 }
 function stockBadge(n){
   if(n===0) return `<span class="badge out">Out</span>`;
@@ -548,19 +639,26 @@ function createOrderHTML(){
       ${items.map(i=>`
       <div class="oi-row">
         <div class="oi-name">${esc(i.name)}</div>
-        <div style="display:flex;align-items:center;gap:3px;margin-right:12px">
+        <div style="display:flex;align-items:center;gap:3px;margin-right:8px">
           <span style="color:#8b96b8;font-size:13px">$</span>
-          <input class="input" id="c-price-${i.id}" type="number" step="0.01" min="0" value="${fmt(i.price)}" style="width:100px;padding:6px 10px;font-size:14px"/>
+          <input class="input" id="c-price-${i.id}" type="number" step="0.01" min="0" value="${fmt(i.price)}" style="width:90px;padding:6px 10px;font-size:14px"/>
           <span style="color:#8b96b8;font-size:13px">ea</span>
         </div>
         <button class="qty-btn" data-action="qty-minus" data-id="${i.id}">−</button>
-        <input class="input" id="c-qty-${i.id}" type="number" min="1" value="${i.qty}" style="width:52px;padding:4px 6px;text-align:center;font-weight:600"/>
+        <input class="input" id="c-qty-${i.id}" type="number" min="1" value="${i.qty}" style="width:48px;padding:4px 6px;text-align:center;font-weight:600"/>
         <button class="qty-btn" data-action="qty-plus" data-id="${i.id}">+</button>
-        <div style="min-width:70px;text-align:right;font-weight:600">$${fmt(i.price*i.qty)}</div>
-        <button class="btn danger xs" style="margin-left:8px" data-action="remove-item" data-id="${i.id}">✕</button>
+        <div class="taken-wrap" title="How many they took at the counter (rest goes on delivery)">
+          took<input class="input" id="c-taken-${i.id}" type="number" min="0" max="${i.qty}" value="${i.taken||0}"/>
+        </div>
+        <div style="min-width:60px;text-align:right;font-weight:600">$${fmt(i.price*i.qty)}</div>
+        <button class="btn danger xs" data-action="remove-item" data-id="${i.id}">✕</button>
       </div>`).join('')}
       <div class="total-bar">
         <div><span class="total-lbl" style="margin-right:8px">Total</span><span class="total-val">$${fmt(total)}</span></div>
+      </div>
+      <div class="fg" style="margin-top:14px">
+        <label>Payment</label>
+        ${payOptionsHTML('c', S.c_pay_mode, S.c_pay_custom, total)}
       </div>
       <div style="margin-top:16px">
         <button class="btn success" data-action="place-order">Place Order</button>
@@ -588,8 +686,12 @@ function ordersHTML(){
     filtered.map(order=>{
       const items = parseItems(order.items);
       const open = S.o_expanded===order.id;
-      const allDone = items.length>0&&items.every(i=>i.loaded);
       const isEditing = S.o_editing===order.id;
+      const deliverableItems = items.map((it,idx)=>({it,idx})).filter(({it})=>{
+        const q = parseInt(it.quantity)||0, t = parseInt(it.taken)||0;
+        return q - t > 0;
+      });
+      const allDone = items.length>0 && items.every(i => i.loaded || (parseInt(i.taken)||0) >= (parseInt(i.quantity)||0));
 
       const eProdSug = isEditing ? S.products.filter(p=>
         S.o_edit_prod.length>0 && p.name.toLowerCase().includes(S.o_edit_prod.toLowerCase()) && p.stock>0
@@ -614,16 +716,19 @@ function ordersHTML(){
           S.o_edit_items.map(i=>`
           <div class="oi-row">
             <div class="oi-name">${esc(i.name)}</div>
-            <div style="display:flex;align-items:center;gap:3px;margin-right:12px">
+            <div style="display:flex;align-items:center;gap:3px;margin-right:8px">
               <span style="color:#8b96b8;font-size:13px">$</span>
-              <input class="input" id="oe-price-${i.id}" type="number" step="0.01" min="0" value="${fmt(i.price)}" style="width:100px;padding:6px 10px;font-size:14px"/>
+              <input class="input" id="oe-price-${i.id}" type="number" step="0.01" min="0" value="${fmt(i.price)}" style="width:90px;padding:6px 10px;font-size:14px"/>
               <span style="color:#8b96b8;font-size:13px">ea</span>
             </div>
             <button class="qty-btn" data-action="oe-qty-minus" data-id="${i.id}">−</button>
-            <input class="input" id="oe-qty-${i.id}" type="number" min="1" value="${i.quantity}" style="width:52px;padding:4px 6px;text-align:center;font-weight:600"/>
+            <input class="input" id="oe-qty-${i.id}" type="number" min="1" value="${i.quantity}" style="width:48px;padding:4px 6px;text-align:center;font-weight:600"/>
             <button class="qty-btn" data-action="oe-qty-plus" data-id="${i.id}">+</button>
-            <div style="min-width:70px;text-align:right;font-weight:600">$${fmt(i.price*i.quantity)}</div>
-            <button class="btn danger xs" style="margin-left:8px" data-action="oe-remove" data-id="${i.id}">✕</button>
+            <div class="taken-wrap" title="How many they took at the counter (rest goes on delivery)">
+              took<input class="input" id="oe-taken-${i.id}" type="number" min="0" max="${i.quantity}" value="${i.taken||0}"/>
+            </div>
+            <div style="min-width:60px;text-align:right;font-weight:600">$${fmt(i.price*i.quantity)}</div>
+            <button class="btn danger xs" data-action="oe-remove" data-id="${i.id}">✕</button>
           </div>`).join('')}
         <div class="fg" style="margin:14px 0 8px">
           <label>Add Product</label>
@@ -639,17 +744,25 @@ function ordersHTML(){
         <div class="total-bar">
           <div><span class="total-lbl" style="margin-right:8px">Total</span><span class="total-val">$${fmt(editTotal)}</span></div>
         </div>
+        <div class="fg" style="margin-top:14px">
+          <label>Payment</label>
+          ${payOptionsHTML('oe', S.o_edit_pay_mode, S.o_edit_pay_custom, editTotal)}
+        </div>
         <div class="btn-row" style="margin-top:12px">
           <button class="btn success sm" data-action="save-edit-order" data-id="${order.id}">Save Changes</button>
           <button class="btn ghost sm" data-action="cancel-edit-order">Cancel</button>
         </div>` : `
-        ${items.map((it,idx)=>`
+        ${deliverableItems.length===0
+          ? '<p class="empty" style="margin:0 0 12px 0">All items picked up at order — nothing to deliver.</p>'
+          : deliverableItems.map(({it,idx})=>{
+              const q = parseInt(it.quantity)||0, t = parseInt(it.taken)||0;
+              return `
         <div class="chk-item${it.loaded?' done':''}">
           <input type="checkbox" ${it.loaded?'checked':''} data-action="toggle-item" data-order-id="${order.id}" data-idx="${idx}"/>
-          <span class="iname" style="flex:1">${esc(it.name)}</span>
-          <span style="color:#8b96b8;font-size:13px">×${it.quantity}</span>
-          <span style="font-weight:600;min-width:60px;text-align:right">$${fmt(it.price*it.quantity)}</span>
-        </div>`).join('')}
+          <span class="iname" style="flex:1">${esc(it.name)}${t>0?`<span style="color:#8b96b8;font-size:11px;margin-left:6px">(${t} taken)</span>`:''}</span>
+          <span style="color:#8b96b8;font-size:13px">×${q-t}</span>
+          <span style="font-weight:600;min-width:60px;text-align:right">$${fmt(it.price*q)}</span>
+        </div>`;}).join('')}
         <div class="btn-row" style="margin-top:12px">
           <button class="btn ghost sm" data-action="start-edit-order" data-id="${order.id}">Edit Order</button>
           <button class="btn ghost sm" data-action="share-whatsapp" data-id="${order.id}">📱 WhatsApp</button>
@@ -664,6 +777,10 @@ function ordersHTML(){
           <div>
             <div style="font-weight:600;font-size:15px">${esc(order.customer_name)}</div>
             <div class="ord-meta">${new Date(order.created_at).toLocaleDateString()} · ${items.length} item${items.length!==1?'s':''}</div>
+            <div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap">
+              ${paymentBadge(order.amount_paid, order.total)}
+              ${deliveryBadge(items)}
+            </div>
           </div>
           <div style="display:flex;gap:12px;align-items:center">
             ${statusBadge(order.status||'pending')}
@@ -997,7 +1114,7 @@ function attachEvents(){
     cp.onblur  = ()=>setTimeout(()=>{ if(S.c_prod_open){ S.c_prod_open=false; render(); } },150);
   }
 
-  // editable price inputs on order items
+  // editable price + qty + taken inputs on order items
   S.c_items.forEach(item => {
     const pel = document.getElementById('c-price-'+item.id);
     if(pel) pel.onblur = e => {
@@ -1007,10 +1124,26 @@ function attachEvents(){
     const qel = document.getElementById('c-qty-'+item.id);
     if(qel) qel.onblur = e => {
       const val = parseInt(e.target.value);
-      if(!isNaN(val) && val > 0){ item.qty = val; render(); }
+      if(!isNaN(val) && val > 0){ item.qty = val; if((item.taken||0)>val) item.taken=val; render(); }
       else if(!isNaN(val) && val <= 0){ S.c_items = S.c_items.filter(i=>i.id!==item.id); render(); }
     };
+    const tel = document.getElementById('c-taken-'+item.id);
+    if(tel) tel.onblur = e => {
+      const val = parseInt(e.target.value);
+      item.taken = isNaN(val) ? 0 : Math.max(0, Math.min(item.qty, val));
+      render();
+    };
   });
+
+  // create-order payment radios + custom amount
+  document.querySelectorAll('input[name="c-pay"]').forEach(r=>{
+    r.onchange = e => { S.c_pay_mode = e.target.value; render(); };
+  });
+  const cpc = document.getElementById('c-pay-custom');
+  if(cpc) cpc.onblur = e => {
+    const v = parseFloat(e.target.value);
+    S.c_pay_custom = (isNaN(v) || v < 0) ? '' : String(v);
+  };
 
   // edit-order product search autocomplete
   const oep = document.getElementById('oe-prod');
@@ -1028,7 +1161,7 @@ function attachEvents(){
     oen.onblur  = ()=>setTimeout(()=>{ if(S.o_edit_name_open){ S.o_edit_name_open=false; render(); } },150);
   }
 
-  // editable price + qty inputs on edit-order items (onblur to avoid cursor issues with type=number)
+  // editable price + qty + taken inputs on edit-order items (onblur to avoid cursor issues with type=number)
   S.o_edit_items.forEach(item=>{
     const pel = document.getElementById('oe-price-'+item.id);
     if(pel) pel.onblur = e=>{
@@ -1038,10 +1171,26 @@ function attachEvents(){
     const qel = document.getElementById('oe-qty-'+item.id);
     if(qel) qel.onblur = e=>{
       const val = parseInt(e.target.value);
-      if(!isNaN(val) && val>0){ item.quantity=val; render(); }
+      if(!isNaN(val) && val>0){ item.quantity=val; if((item.taken||0)>val) item.taken=val; render(); }
       else if(!isNaN(val) && val<=0){ S.o_edit_items=S.o_edit_items.filter(i=>i.id!==item.id); render(); }
     };
+    const tel = document.getElementById('oe-taken-'+item.id);
+    if(tel) tel.onblur = e=>{
+      const val = parseInt(e.target.value);
+      item.taken = isNaN(val) ? 0 : Math.max(0, Math.min(item.quantity, val));
+      render();
+    };
   });
+
+  // edit-order payment radios + custom amount
+  document.querySelectorAll('input[name="oe-pay"]').forEach(r=>{
+    r.onchange = e => { S.o_edit_pay_mode = e.target.value; render(); };
+  });
+  const oepc = document.getElementById('oe-pay-custom');
+  if(oepc) oepc.onblur = e => {
+    const v = parseFloat(e.target.value);
+    S.o_edit_pay_custom = (isNaN(v) || v < 0) ? '' : String(v);
+  };
 
   // reports period pills
   document.querySelectorAll('[data-r-period]').forEach(el=>{
@@ -1099,7 +1248,7 @@ async function handleAction(e, el){
   else if(a==='pick-prod'){
     const id=parseInt(el.dataset.id), name=el.dataset.name, price=parseFloat(el.dataset.price);
     const ex = S.c_items.find(i=>i.id===id);
-    if(ex) ex.qty++; else S.c_items.push({id,name,price,qty:1});
+    if(ex) ex.qty++; else S.c_items.push({id,name,price,qty:1,taken:0});
     S.c_prod=''; S.c_prod_open=false; render();
   }
   else if(a==='qty-minus'){
@@ -1115,14 +1264,16 @@ async function handleAction(e, el){
     if(!S.c_cust.trim()) return toast('Customer name required','error');
     if(!S.c_items.length) return toast('Add at least one item','error');
     const total = S.c_items.reduce((s,i)=>s+i.price*i.qty,0);
+    const paid = S.c_pay_mode==='full' ? total :
+                 S.c_pay_mode==='custom' ? Math.max(0, parseFloat(S.c_pay_custom)||0) : 0;
     try{
       await api('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         customer_name:S.c_cust.trim(),
-        items:S.c_items.map(i=>({id:i.id,name:i.name,price:i.price,quantity:i.qty})),
-        subtotal:total,tax:0,total
+        items:S.c_items.map(i=>({id:i.id,name:i.name,price:i.price,quantity:i.qty,taken:Math.max(0,Math.min(i.qty,parseInt(i.taken)||0))})),
+        subtotal:total,tax:0,total,amount_paid:paid
       })});
       toast('Order created!','success');
-      S.c_cust=''; S.c_items=[];
+      S.c_cust=''; S.c_items=[]; S.c_pay_mode='unpaid'; S.c_pay_custom='';
       await fetchAll();
     } catch(err){ toast(err.message,'error'); }
   }
@@ -1138,13 +1289,23 @@ async function handleAction(e, el){
     const order=S.orders.find(o=>o.id===orderId);
     if(!order) return;
     S.o_editing=orderId;
-    S.o_edit_items=parseItems(order.items).map(i=>({id:i.id,name:i.name,price:parseFloat(i.price)||0,quantity:parseInt(i.quantity)||0}));
+    S.o_edit_items=parseItems(order.items).map(i=>({
+      id:i.id, name:i.name,
+      price:parseFloat(i.price)||0,
+      quantity:parseInt(i.quantity)||0,
+      taken:parseInt(i.taken)||0
+    }));
     S.o_edit_name=order.customer_name||''; S.o_edit_name_open=false;
+    const ototal = parseFloat(order.total)||0, opaid = parseFloat(order.amount_paid)||0;
+    if(opaid <= 0) { S.o_edit_pay_mode='unpaid'; S.o_edit_pay_custom=''; }
+    else if(opaid >= ototal) { S.o_edit_pay_mode='full'; S.o_edit_pay_custom=''; }
+    else { S.o_edit_pay_mode='custom'; S.o_edit_pay_custom=String(opaid); }
     S.o_edit_prod=''; S.o_edit_prod_open=false; S.o_expanded=orderId; render();
   }
   else if(a==='cancel-edit-order'){
     S.o_editing=null; S.o_edit_items=[]; S.o_edit_prod='';
-    S.o_edit_name=''; S.o_edit_name_open=false; render();
+    S.o_edit_name=''; S.o_edit_name_open=false;
+    S.o_edit_pay_mode='unpaid'; S.o_edit_pay_custom=''; render();
   }
   else if(a==='oe-pick-cust'){ S.o_edit_name=el.dataset.val; S.o_edit_name_open=false; render(); }
   else if(a==='oe-qty-minus'){
@@ -1161,17 +1322,27 @@ async function handleAction(e, el){
   else if(a==='oe-pick-prod'){
     const id=parseInt(el.dataset.id), name=el.dataset.name, price=parseFloat(el.dataset.price);
     const ex=S.o_edit_items.find(i=>i.id===id);
-    if(ex) ex.quantity++; else S.o_edit_items.push({id,name,price,quantity:1});
+    if(ex) ex.quantity++; else S.o_edit_items.push({id,name,price,quantity:1,taken:0});
     S.o_edit_prod=''; S.o_edit_prod_open=false; render();
   }
   else if(a==='save-edit-order'){
     const orderId=parseInt(el.dataset.id);
     if(!S.o_edit_items.length) return toast('Add at least one item','error');
     if(!S.o_edit_name.trim()) return toast('Customer name required','error');
+    const total = S.o_edit_items.reduce((s,i)=>s+i.price*i.quantity,0);
+    const paid = S.o_edit_pay_mode==='full' ? total :
+                 S.o_edit_pay_mode==='custom' ? Math.max(0, parseFloat(S.o_edit_pay_custom)||0) : 0;
+    const itemsOut = S.o_edit_items.map(i=>({
+      id:i.id, name:i.name, price:i.price, quantity:i.quantity,
+      taken:Math.max(0,Math.min(i.quantity,parseInt(i.taken)||0))
+    }));
     try{
-      await api('/api/orders/'+orderId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:S.o_edit_items,customer_name:S.o_edit_name.trim()})});
+      await api('/api/orders/'+orderId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        items:itemsOut, customer_name:S.o_edit_name.trim(), amount_paid:paid
+      })});
       S.o_editing=null; S.o_edit_items=[]; S.o_edit_prod='';
       S.o_edit_name=''; S.o_edit_name_open=false;
+      S.o_edit_pay_mode='unpaid'; S.o_edit_pay_custom='';
       toast('Order updated','success');
       await fetchAll();
     } catch(err){ toast(err.message,'error'); }
@@ -1180,7 +1351,11 @@ async function handleAction(e, el){
     const orderId=parseInt(el.dataset.orderId), idx=parseInt(el.dataset.idx);
     const order = S.orders.find(o=>o.id===orderId);
     if(!order) return;
-    const items = parseItems(order.items).map((it,i)=>i===idx?{...it,loaded:!it.loaded}:it);
+    const items = parseItems(order.items).map((it,i)=>{
+      const q = parseInt(it.quantity)||0, t = parseInt(it.taken)||0;
+      if(t >= q) return {...it, loaded:true};
+      return i===idx ? {...it,loaded:!it.loaded} : it;
+    });
     const status = items.every(it=>it.loaded)?'loaded':'pending';
     order.items=JSON.stringify(items); order.status=status; render();
     try{ await fetch('/api/orders/'+orderId+'/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,status})}); }
