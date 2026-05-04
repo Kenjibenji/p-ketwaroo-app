@@ -476,13 +476,54 @@ function CreateOrderTab({ products, customers, onOrderCreated, toast, API_URL })
 
 // ===== ORDERS =====
 
-function OrdersTab({ orders, onRefresh, toast, confirm, API_URL }) {
+function OrdersTab({ orders, customers, onRefresh, toast, confirm, API_URL }) {
   var [search, setSearch] = useState('');
   var [statusFilter, setStatusFilter] = useState('all');
   var [expandedId, setExpandedId] = useState(null);
   var [localOrders, setLocalOrders] = useState(orders);
+  var [editingNameId, setEditingNameId] = useState(null);
+  var [nameInput, setNameInput] = useState('');
+  var [showNameDrop, setShowNameDrop] = useState(false);
 
   useEffect(function() { setLocalOrders(orders); }, [orders]);
+
+  var nameMatches = (customers || []).filter(function(c) {
+    return c.toLowerCase().indexOf(nameInput.toLowerCase()) !== -1;
+  }).slice(0, 8);
+
+  function startEditName(order) {
+    setEditingNameId(order.id);
+    setNameInput(order.customer_name || '');
+    setShowNameDrop(false);
+  }
+  function cancelEditName() {
+    setEditingNameId(null);
+    setNameInput('');
+    setShowNameDrop(false);
+  }
+  async function saveEditName(orderId) {
+    var name = nameInput.trim();
+    if (!name) { toast('Enter a customer name', 'error'); return; }
+    setLocalOrders(function(prev) {
+      return prev.map(function(o) { return o.id === orderId ? Object.assign({}, o, { customer_name: name }) : o; });
+    });
+    try {
+      var res = await fetch(API_URL + '/orders/' + orderId + '/customer', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_name: name }),
+      });
+      if (res.ok) {
+        toast('Customer name updated', 'success');
+        cancelEditName();
+        onRefresh();
+      } else {
+        var d = await res.json();
+        toast(d.error || 'Failed to update name', 'error');
+        onRefresh();
+      }
+    } catch (err) { toast('Failed to update name', 'error'); onRefresh(); }
+  }
 
   var filtered = localOrders.filter(function(o) {
     var q = search.toLowerCase();
@@ -583,6 +624,41 @@ function OrdersTab({ orders, onRefresh, toast, confirm, API_URL }) {
 
                 {isExpanded && (
                   <div className="order-detail">
+                    <div className="order-customer-edit">
+                      {editingNameId === order.id ? (
+                        <div className="form-group">
+                          <label>Customer Name</label>
+                          <div className="dropdown-container">
+                            <input type="text" value={nameInput}
+                              onChange={function(e) { setNameInput(e.target.value); setShowNameDrop(true); }}
+                              onFocus={function() { setShowNameDrop(true); }}
+                              onBlur={function() { setTimeout(function() { setShowNameDrop(false); }, 150); }} />
+                            {showNameDrop && nameInput.length > 0 && nameMatches.length > 0 && (
+                              <div className="dropdown-options">
+                                {nameMatches.map(function(c, i) {
+                                  return (
+                                    <div key={i} className="dropdown-option"
+                                      onMouseDown={function() { setNameInput(c); setShowNameDrop(false); }}>
+                                      {c}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          <div className="edit-name-actions">
+                            <button className="btn btn-sm btn-primary" onClick={function() { saveEditName(order.id); }}>Save</button>
+                            <button className="btn btn-sm btn-ghost" onClick={cancelEditName}>Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="order-customer-row">
+                          <span className="checklist-title">Customer</span>
+                          <strong className="order-customer-name">{order.customer_name}</strong>
+                          <button className="btn btn-sm btn-ghost" onClick={function() { startEditName(order); }}>✎ Edit</button>
+                        </div>
+                      )}
+                    </div>
                     <div className="checklist-header">
                       <span className="checklist-title">Loading Checklist</span>
                       <span className="checklist-progress">{loadedCount}/{items.length} loaded</span>
@@ -708,7 +784,7 @@ function App() {
           <CreateOrderTab products={products} customers={customers} onOrderCreated={fetchAll} toast={toast} API_URL={API_URL} />
         )}
         {activeTab === 'orders' && (
-          <OrdersTab orders={orders} onRefresh={fetchAll} toast={toast} confirm={confirm} API_URL={API_URL} />
+          <OrdersTab orders={orders} customers={customers} onRefresh={fetchAll} toast={toast} confirm={confirm} API_URL={API_URL} />
         )}
       </main>
     </div>

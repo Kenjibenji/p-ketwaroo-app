@@ -577,6 +577,16 @@ tbody tr:hover { background: #161a2e; }
 
 .order-delete-btn { margin-top: 12px; }
 
+.order-customer-edit { margin-bottom: 16px; }
+.order-customer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.order-customer-name { color: #e8eaf5; }
+.edit-name-actions { display: flex; gap: 8px; margin-top: 8px; }
+
 /* ===== TOAST ===== */
 
 .toast-container {

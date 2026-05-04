@@ -204,6 +204,23 @@ app.patch('/api/orders/:id/items', async (req, res) => {
   }
 });
 
+app.patch('/api/orders/:id/customer', async (req, res) => {
+  const { id } = req.params;
+  const { customer_name } = req.body;
+  const name = typeof customer_name === 'string' ? customer_name.trim() : '';
+  if (!name) return res.status(400).json({ error: 'customer_name is required' });
+  try {
+    const result = await pool.query(
+      'UPDATE orders SET customer_name=$1 WHERE id=$2 RETURNING *',
+      [name, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    res.json(result.rows[0]);
+  } catch {
+    res.status(500).json({ error: 'Failed to update customer name' });
+  }
+});
+
 app.put('/api/orders/:id', async (req, res) => {
   const { id } = req.params;
   const { items } = req.body;
