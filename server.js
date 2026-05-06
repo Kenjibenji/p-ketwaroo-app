@@ -23,6 +23,9 @@ async function runMigrations() {
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS amount_paid DECIMAL(10,2) NOT NULL DEFAULT 0
   `);
   await pool.query(`
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP
+  `);
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS payments (
       id SERIAL PRIMARY KEY,
       customer_name VARCHAR(255) NOT NULL,
@@ -416,6 +419,23 @@ app.patch('/api/orders/:id/items', async (req, res) => {
     res.json(result.rows[0]);
   } catch {
     res.status(500).json({ error: 'Failed to update order' });
+  }
+});
+
+app.patch('/api/orders/:id/delivered', async (req, res) => {
+  const { id } = req.params;
+  const delivered = !!req.body?.delivered;
+  try {
+    const result = await pool.query(
+      delivered
+        ? 'UPDATE orders SET delivered_at = NOW() WHERE id=$1 RETURNING *'
+        : 'UPDATE orders SET delivered_at = NULL WHERE id=$1 RETURNING *',
+      [id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    res.json(result.rows[0]);
+  } catch {
+    res.status(500).json({ error: 'Failed to update delivery status' });
   }
 });
 

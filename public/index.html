@@ -81,6 +81,8 @@ tr.lowstock td{background:#160e0e}
 .badge.partial{background:#3a2e10;color:#f0a820}
 .badge.unpaid{background:#2e1010;color:#e05252}
 .badge.pickup{background:#1e2d4a;color:#5b8ff0}
+.badge.delivered{background:#0e2e1e;color:#2dc875}
+.badge.undelivered{background:#3a2e10;color:#f0a820}
 .badge.click{cursor:pointer;user-select:none}
 .badge.click:hover{filter:brightness(1.25)}
 
@@ -543,6 +545,16 @@ function deliveryBadge(items){
   if(totT >= totQ) return '<span class="badge pickup">All picked up</span>';
   return `<span class="badge pickup">${totQ-totT} to deliver</span>`;
 }
+function deliveredBadge(deliveredAt, orderId){
+  const isDelivered = !!deliveredAt;
+  const cls = orderId ? ' click' : '';
+  const attrs = orderId ? ` data-action="toggle-delivered" data-id="${orderId}" title="Click to toggle delivered"` : '';
+  if(isDelivered){
+    const date = new Date(deliveredAt).toLocaleDateString();
+    return `<span class="badge delivered${cls}"${attrs}>✓ Delivered ${date}</span>`;
+  }
+  return `<span class="badge undelivered${cls}"${attrs}>🚚 Not Delivered</span>`;
+}
 function payOptionsHTML(idPrefix, mode, customVal, total){
   return `
     <div class="pay-opts">
@@ -742,16 +754,16 @@ function createOrderHTML(){
 }
 
 function ordersHTML(){
-  const needsDeliveryFn = o => {
-    const its = parseItems(o.items);
-    return its.some(i => (parseInt(i.quantity)||0) > (parseInt(i.taken)||0));
-  };
-  const filtered = S.orders.filter(o=>
+  const needsDeliveryFn = o => !o.delivered_at;
+  let filtered = S.orders.filter(o=>
     o.customer_name.toLowerCase().includes(S.o_search.toLowerCase()) &&
     (S.o_filter==='all' ? true :
      S.o_filter==='deliver' ? needsDeliveryFn(o) :
      o.status===S.o_filter)
   );
+  if(S.o_filter==='deliver'){
+    filtered = filtered.slice().sort((a,b)=>new Date(a.created_at) - new Date(b.created_at));
+  }
   const deliverCount = S.orders.filter(needsDeliveryFn).length;
   return `
   <div class="search-wrap">
@@ -853,7 +865,7 @@ function ordersHTML(){
           <button class="btn danger sm" data-action="del-order" data-id="${order.id}">Delete Order</button>
         </div>`;
 
-      const needsDelivery = items.some(i => (parseInt(i.quantity)||0) > (parseInt(i.taken)||0));
+      const needsDelivery = !order.delivered_at;
       return `
       <div class="ord-card${needsDelivery?' to-deliver':''}">
         <div class="ord-hdr" data-action="toggle-order" data-id="${order.id}">
@@ -862,7 +874,7 @@ function ordersHTML(){
             <div class="ord-meta">${new Date(order.created_at).toLocaleDateString()} · ${items.length} item${items.length!==1?'s':''}</div>
             <div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap">
               ${paymentBadge(order.amount_paid, order.total, order.id)}
-              ${deliveryBadge(items)}
+              ${deliveredBadge(order.delivered_at, order.id)}
             </div>
           </div>
           <div style="display:flex;gap:12px;align-items:center">
@@ -1535,6 +1547,18 @@ async function handleAction(e, el){
   }
 
   // ── orders ──
+  else if(a==='toggle-delivered'){
+    e.stopPropagation();
+    const orderId=parseInt(el.dataset.id), order=S.orders.find(o=>o.id===orderId);
+    if(!order) return;
+    const nowDelivered = !order.delivered_at;
+    order.delivered_at = nowDelivered ? new Date().toISOString() : null;
+    render();
+    try{
+      await fetch('/api/orders/'+orderId+'/delivered',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({delivered:nowDelivered})});
+      toast(nowDelivered?'Marked delivered':'Marked not delivered','success');
+    } catch(err){ toast('Update failed','error'); await fetchAll(); }
+  }
   else if(a==='toggle-paid'){
     e.stopPropagation();
     const orderId=parseInt(el.dataset.id), order=S.orders.find(o=>o.id===orderId);
