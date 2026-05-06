@@ -227,6 +227,23 @@ app.patch('/api/orders/:id/items', async (req, res) => {
   }
 });
 
+app.patch('/api/orders/:id/paid', async (req, res) => {
+  const { id } = req.params;
+  const { amount_paid } = req.body;
+  if (amount_paid === undefined) return res.status(400).json({ error: 'amount_paid is required' });
+  const paid = Math.max(0, parseFloat(amount_paid) || 0);
+  try {
+    const result = await pool.query(
+      'UPDATE orders SET amount_paid=$1 WHERE id=$2 RETURNING *',
+      [paid, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    res.json(result.rows[0]);
+  } catch {
+    res.status(500).json({ error: 'Failed to update payment' });
+  }
+});
+
 app.patch('/api/orders/:id/customer', async (req, res) => {
   const { id } = req.params;
   const { customer_name } = req.body;
