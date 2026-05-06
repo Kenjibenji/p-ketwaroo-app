@@ -22,6 +22,24 @@ async function runMigrations() {
   await pool.query(`
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS amount_paid DECIMAL(10,2) NOT NULL DEFAULT 0
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id SERIAL PRIMARY KEY,
+      customer_name VARCHAR(255) NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      paid_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      note TEXT,
+      allocations JSONB NOT NULL DEFAULT '[]'::jsonb
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_customer ON payments(customer_name)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS customer_meta (
+      customer_name VARCHAR(255) PRIMARY KEY,
+      phone VARCHAR(50),
+      notes TEXT
+    )
+  `);
 }
 
 function normalizeItems(items, oldLoadedMap) {
@@ -80,6 +98,180 @@ app.get('/api/customers', async (req, res) => {
     res.json(result.rows.map(r => r.customer_name));
   } catch {
     res.status(500).json({ error: 'Failed to fetch customers' });
+  }
+});
+
+app.get('/api/customers/full', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        o.customer_name AS name,
+        COUNT(DISTINCT o.id)::int AS order_count,
+        COALESCE(SUM(o.total), 0)::numeric AS total_spent,
+        COALESCE(SUM(o.total - o.amount_paid), 0)::numeric AS balance,
+        MAX(o.created_at) AS last_order_at,
+        m.phone,
+        m.notes
+      FROM orders o
+      LEFT JOIN customer_meta m ON m.customer_name = o.customer_name
+      GROUP BY o.customer_name, m.phone, m.notes
+      ORDER BY MAX(o.created_at) DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch customers' });
+  }
+});
+
+app.get('/api/customers/:name', async (req, res) => {
+  const name = req.params.name;
+  try {
+    const [orders, payments, meta] = await Promise.all([
+      pool.query('SELECT * FROM orders WHERE customer_name=$1 ORDER BY created_at DESC', [name]),
+      pool.query('SELECT * FROM payments WHERE customer_name=$1 ORDER BY paid_at DESC', [name]),
+      pool.query('SELECT phone, notes FROM customer_meta WHERE customer_name=$1', [name]),
+    ]);
+    if (orders.rows.length === 0) return res.status(404).json({ error: 'Customer not found' });
+    const totals = orders.rows.reduce((acc, o) => {
+      acc.total_spent += parseFloat(o.total) || 0;
+      acc.balance += (parseFloat(o.total) || 0) - (parseFloat(o.amount_paid) || 0);
+      return acc;
+    }, { total_spent: 0, balance: 0 });
+    res.json({
+      name,
+      phone: meta.rows[0]?.phone || '',
+      notes: meta.rows[0]?.notes || '',
+      total_spent: totals.total_spent,
+      balance: totals.balance,
+      orders: orders.rows,
+      payments: payments.rows,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch customer' });
+  }
+});
+
+app.put('/api/customers/:name/meta', async (req, res) => {
+  const name = req.params.name;
+  const phone = (req.body?.phone || '').toString().trim() || null;
+  const notes = (req.body?.notes || '').toString().trim() || null;
+  try {
+    const exists = await pool.query('SELECT 1 FROM orders WHERE customer_name=$1 LIMIT 1', [name]);
+    if (!exists.rows.length) return res.status(404).json({ error: 'Customer not found' });
+    await pool.query(`
+      INSERT INTO customer_meta (customer_name, phone, notes)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (customer_name) DO UPDATE SET phone=EXCLUDED.phone, notes=EXCLUDED.notes
+    `, [name, phone, notes]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update customer' });
+  }
+});
+
+app.put('/api/customers/:name/rename', async (req, res) => {
+  const name = req.params.name;
+  const newName = (req.body?.new_name || '').toString().trim();
+  if (!newName) return res.status(400).json({ error: 'new_name is required' });
+  if (newName === name) return res.json({ ok: true });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('UPDATE orders SET customer_name=$1 WHERE customer_name=$2', [newName, name]);
+    await client.query('UPDATE payments SET customer_name=$1 WHERE customer_name=$2', [newName, name]);
+    // merge meta: if both exist, keep the destination meta; otherwise move
+    const dst = await client.query('SELECT 1 FROM customer_meta WHERE customer_name=$1', [newName]);
+    if (dst.rows.length) {
+      await client.query('DELETE FROM customer_meta WHERE customer_name=$1', [name]);
+    } else {
+      await client.query('UPDATE customer_meta SET customer_name=$1 WHERE customer_name=$2', [newName, name]);
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true, name: newName });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Failed to rename customer' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/customers/:name/payments', async (req, res) => {
+  const name = req.params.name;
+  const amount = Math.max(0, parseFloat(req.body?.amount) || 0);
+  const note = (req.body?.note || '').toString().trim() || null;
+  if (amount <= 0) return res.status(400).json({ error: 'amount must be > 0' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const unpaid = await client.query(
+      `SELECT id, total, amount_paid FROM orders
+       WHERE customer_name=$1 AND amount_paid < total
+       ORDER BY created_at ASC FOR UPDATE`,
+      [name]
+    );
+    let remaining = amount;
+    const allocations = [];
+    for (const o of unpaid.rows) {
+      if (remaining <= 0) break;
+      const owed = (parseFloat(o.total) || 0) - (parseFloat(o.amount_paid) || 0);
+      if (owed <= 0) continue;
+      const apply = Math.min(remaining, owed);
+      const newPaid = (parseFloat(o.amount_paid) || 0) + apply;
+      await client.query('UPDATE orders SET amount_paid=$1 WHERE id=$2', [newPaid, o.id]);
+      allocations.push({ order_id: o.id, amount: apply });
+      remaining -= apply;
+    }
+    const overpay = remaining > 0.0001 ? remaining : 0;
+    const result = await client.query(
+      `INSERT INTO payments (customer_name, amount, note, allocations)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [name, amount, note, JSON.stringify(allocations)]
+    );
+    await client.query('COMMIT');
+    res.status(201).json({ payment: result.rows[0], applied: amount - overpay, overpay });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Failed to log payment' });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/payments/:id', async (req, res) => {
+  const { id } = req.params;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const pr = await client.query('SELECT * FROM payments WHERE id=$1 FOR UPDATE', [id]);
+    if (!pr.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+    let allocs = pr.rows[0].allocations;
+    if (typeof allocs === 'string') try { allocs = JSON.parse(allocs); } catch { allocs = []; }
+    if (!Array.isArray(allocs)) allocs = [];
+    for (const a of allocs) {
+      const sr = await client.query('SELECT amount_paid FROM orders WHERE id=$1 FOR UPDATE', [a.order_id]);
+      if (!sr.rows.length) continue;
+      const newPaid = Math.max(0, (parseFloat(sr.rows[0].amount_paid) || 0) - (parseFloat(a.amount) || 0));
+      await client.query('UPDATE orders SET amount_paid=$1 WHERE id=$2', [newPaid, a.order_id]);
+    }
+    await client.query('DELETE FROM payments WHERE id=$1', [id]);
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete payment' });
+  } finally {
+    client.release();
   }
 });
 

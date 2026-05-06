@@ -102,6 +102,18 @@ tr.lowstock td{background:#160e0e}
 /* order card */
 .ord-card{background:#0f1222;border:1px solid #252840;border-radius:8px;margin-bottom:10px;overflow:hidden}
 .ord-card.to-deliver{border-left:3px solid #f0a820}
+.cu-card{background:#0f1222;border:1px solid #252840;border-radius:8px;margin-bottom:10px;overflow:hidden}
+.cu-card.owes{border-left:3px solid #e05252}
+.cu-meta{padding:10px 12px;background:#0b0d18;border-radius:6px;font-size:13px;margin-bottom:14px}
+.cu-meta .muted{color:#8b96b8}
+.cu-edit{background:#0b0d18;border-radius:6px;padding:12px;margin-bottom:14px}
+.cu-edit textarea.input{resize:vertical;min-height:48px}
+.cu-section-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px}
+@media(max-width:640px){.cu-section-grid{grid-template-columns:1fr}}
+.cu-section-hdr{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#8b96b8;margin-bottom:6px;font-weight:600}
+.cu-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:#0b0d18;border-radius:6px;margin-bottom:6px}
+.cu-paybox{background:#0b0d18;border:1px solid #252840;border-radius:6px;padding:12px;margin-bottom:12px}
+.muted{color:#8b96b8;font-size:13px}
 .ord-hdr{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer}
 .ord-hdr:hover{background:#13162a}
 .ord-meta{font-size:12px;color:#8b96b8;margin-top:3px}
@@ -241,6 +253,11 @@ const S = {
   c_cust: '', c_prod: '', c_items: [],
   c_cust_open: false, c_prod_open: false,
   c_pay_mode: 'unpaid', c_pay_custom: '',
+  // customers tab
+  customers_full: [],
+  cu_search: '', cu_expanded: null, cu_detail: null, cu_loading: false,
+  cu_pay_amount: '', cu_pay_note: '',
+  cu_editing: false, cu_edit_name: '', cu_edit_phone: '', cu_edit_notes: '',
 };
 
 let _restoringFocus = false;
@@ -468,18 +485,28 @@ async function api(url, opts){
 
 async function fetchAll(){
   try {
-    const [p,o,c,s] = await Promise.all([
+    const [p,o,cf,s] = await Promise.all([
       fetch('/api/products').then(r=>r.json()),
       fetch('/api/orders').then(r=>r.json()),
-      fetch('/api/customers').then(r=>r.json()),
+      fetch('/api/customers/full').then(r=>r.json()),
       fetch('/api/stats').then(r=>r.json()),
     ]);
-    S.products  = Array.isArray(p)?p:[];
-    S.orders    = Array.isArray(o)?o:[];
-    S.customers = Array.isArray(c)?c:[];
-    S.stats     = (s&&!s.error)?s:{};
+    S.products       = Array.isArray(p)?p:[];
+    S.orders         = Array.isArray(o)?o:[];
+    S.customers_full = Array.isArray(cf)?cf:[];
+    S.customers      = S.customers_full.map(c=>c.name).sort();
+    S.stats          = (s&&!s.error)?s:{};
     render();
   } catch(e){ toast('Failed to load data','error'); }
+}
+
+async function loadCustomerDetail(name){
+  S.cu_loading = true; render();
+  try {
+    const d = await fetch('/api/customers/'+encodeURIComponent(name)).then(r=>r.json());
+    if(d && !d.error) S.cu_detail = d;
+    S.cu_loading = false; render();
+  } catch(e){ S.cu_loading = false; toast('Failed to load customer','error'); render(); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -810,6 +837,163 @@ function ordersHTML(){
 }
 
 // ═══════════════════════════════════════════════════════════
+// CUSTOMERS
+// ═══════════════════════════════════════════════════════════
+function customersHTML(){
+  const q = S.cu_search.toLowerCase();
+  const list = S.customers_full.filter(c =>
+    c.name.toLowerCase().includes(q) ||
+    (c.phone||'').toLowerCase().includes(q)
+  );
+  const totalOwed = S.customers_full.reduce((s,c)=>s + (parseFloat(c.balance)||0), 0);
+  const oweCount = S.customers_full.filter(c => (parseFloat(c.balance)||0) > 0.005).length;
+
+  return `
+  <div class="stats">
+    <div class="stat blue"><div class="stat-icon">👥</div><div><div class="stat-val">${S.customers_full.length}</div><div class="stat-lbl">Total Customers</div></div></div>
+    <div class="stat amber"><div class="stat-icon">💸</div><div><div class="stat-val">${oweCount}</div><div class="stat-lbl">With Balance</div></div></div>
+    <div class="stat red"><div class="stat-icon">📊</div><div><div class="stat-val">$${fmt(totalOwed)}</div><div class="stat-lbl">Total Owed</div></div></div>
+  </div>
+  <div class="search-wrap">
+    <span class="search-ico">🔍</span>
+    <input class="input" id="cu-search" value="${esc(S.cu_search)}" placeholder="Search by name or phone…"/>
+  </div>
+  ${list.length===0?'<p class="empty">No customers found.</p>':
+    list.map(c => customerCardHTML(c)).join('')}`;
+}
+
+function customerCardHTML(c){
+  const balance = parseFloat(c.balance)||0;
+  const owes = balance > 0.005;
+  const totalSpent = parseFloat(c.total_spent)||0;
+  const open = S.cu_expanded === c.name;
+  const lastDate = c.last_order_at ? new Date(c.last_order_at).toLocaleDateString() : '—';
+
+  return `
+  <div class="cu-card${owes?' owes':''}">
+    <div class="ord-hdr" data-action="toggle-customer" data-name="${esc(c.name)}">
+      <div>
+        <div style="font-weight:600;font-size:15px">${esc(c.name)}</div>
+        <div class="ord-meta">
+          ${c.order_count} order${c.order_count!==1?'s':''} · last ${lastDate}${c.phone?` · 📞 ${esc(c.phone)}`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:center;text-align:right">
+        <div>
+          <div style="font-size:11px;color:#8b96b8">Spent</div>
+          <div style="font-weight:600">$${fmt(totalSpent)}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#8b96b8">Balance</div>
+          <div style="font-weight:700;font-size:17px;color:${owes?'#e05252':'#2dc875'}">$${fmt(balance)}</div>
+        </div>
+        <span style="color:#8b96b8">${open?'▲':'▼'}</span>
+      </div>
+    </div>
+    <div class="ord-body${open?' open':''}">
+      ${open ? customerDetailHTML(c) : ''}
+    </div>
+  </div>`;
+}
+
+function customerDetailHTML(summary){
+  if(S.cu_loading || !S.cu_detail || S.cu_detail.name !== summary.name){
+    return '<p class="muted" style="padding:8px 0">Loading…</p>';
+  }
+  const d = S.cu_detail;
+  const balance = parseFloat(d.balance)||0;
+  const owes = balance > 0.005;
+
+  const editPanel = S.cu_editing ? `
+    <div class="cu-edit">
+      <div class="form-row">
+        <div class="fg"><label>Customer Name</label>
+          <input class="input" id="cu-edit-name" value="${esc(S.cu_edit_name)}" placeholder="Name"/>
+        </div>
+        <div class="fg"><label>Phone</label>
+          <input class="input" id="cu-edit-phone" value="${esc(S.cu_edit_phone)}" placeholder="Optional"/>
+        </div>
+      </div>
+      <div class="fg"><label>Notes</label>
+        <textarea class="input" id="cu-edit-notes" rows="2" placeholder="Optional notes…">${esc(S.cu_edit_notes)}</textarea>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn success sm" data-action="save-customer" data-name="${esc(d.name)}">Save</button>
+        <button class="btn ghost sm" data-action="cancel-edit-customer">Cancel</button>
+      </div>
+    </div>` : `
+    <div class="cu-meta">
+      ${d.phone || d.notes ? `
+        ${d.phone?`<div><span class="muted">Phone:</span> ${esc(d.phone)}</div>`:''}
+        ${d.notes?`<div style="margin-top:4px"><span class="muted">Notes:</span> ${esc(d.notes)}</div>`:''}
+      ` : '<div class="muted">No contact info on file.</div>'}
+      <button class="btn ghost xs" style="margin-top:8px" data-action="start-edit-customer" data-name="${esc(d.name)}">Edit Account</button>
+    </div>`;
+
+  const payForm = owes ? `
+    <div class="cu-paybox">
+      <div style="font-weight:600;margin-bottom:8px">Log Payment</div>
+      <div class="form-row" style="margin:0">
+        <div class="fg" style="max-width:140px"><label>Amount</label>
+          <input class="input" id="cu-pay-amount" type="number" step="0.01" min="0" value="${esc(S.cu_pay_amount)}" placeholder="0.00"/>
+        </div>
+        <div class="fg"><label>Note (optional)</label>
+          <input class="input" id="cu-pay-note" value="${esc(S.cu_pay_note)}" placeholder="Cash, check #, etc."/>
+        </div>
+        <div class="fg" style="flex:0 0 auto;justify-content:flex-end">
+          <label style="visibility:hidden">.</label>
+          <div style="display:flex;gap:6px">
+            <button class="btn primary sm" data-action="log-payment" data-name="${esc(d.name)}">Log</button>
+            <button class="btn ghost sm" data-action="log-payment-full" data-name="${esc(d.name)}" data-amount="${balance.toFixed(2)}">Pay Full ($${fmt(balance)})</button>
+          </div>
+        </div>
+      </div>
+    </div>` : '';
+
+  const ordersList = d.orders.length === 0 ? '<p class="muted">No orders.</p>' :
+    d.orders.map(o => {
+      const total = parseFloat(o.total)||0, paid = parseFloat(o.amount_paid)||0;
+      const owed = total - paid;
+      return `
+      <div class="cu-row">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:500">#${o.id} · ${new Date(o.created_at).toLocaleDateString()}</div>
+          <div class="ord-meta">${parseItems(o.items).length} items · Total $${fmt(total)}${owed>0.005?` · <span style="color:#e05252">Owes $${fmt(owed)}</span>`:''}</div>
+        </div>
+        ${paymentBadge(o.amount_paid, o.total)}
+      </div>`;
+    }).join('');
+
+  const paymentsList = d.payments.length === 0 ? '<p class="muted">No payments logged.</p>' :
+    d.payments.map(p => `
+      <div class="cu-row">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:500">$${fmt(p.amount)} · ${new Date(p.paid_at).toLocaleDateString()}</div>
+          ${p.note?`<div class="ord-meta">${esc(p.note)}</div>`:''}
+        </div>
+        <button class="btn danger xs" data-action="del-payment" data-id="${p.id}" data-name="${esc(d.name)}" title="Delete payment (restores order balances)">✕</button>
+      </div>`).join('');
+
+  return `
+    ${editPanel}
+    <div class="cu-section-grid">
+      <div>
+        <div class="cu-section-hdr">Orders (${d.orders.length})</div>
+        ${ordersList}
+      </div>
+      <div>
+        <div class="cu-section-hdr">Payments (${d.payments.length})</div>
+        ${paymentsList}
+      </div>
+    </div>
+    ${payForm}
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn ghost sm" data-action="goto-customer-orders" data-name="${esc(d.name)}">View in Orders Tab</button>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════
 // REPORTS
 // ═══════════════════════════════════════════════════════════
 function periodRange(period){
@@ -1041,6 +1225,7 @@ const TABS = [
   {id:'products',    label:'Products'},
   {id:'create-order',label:'Create Order'},
   {id:'orders',      label:'Orders'},
+  {id:'customers',   label:'Customers'},
   {id:'reports',     label:'Reports'},
 ];
 
@@ -1060,6 +1245,7 @@ function render(){
   else if(S.tab==='products')     main.innerHTML = productsHTML();
   else if(S.tab==='create-order') main.innerHTML = createOrderHTML();
   else if(S.tab==='orders')       main.innerHTML = ordersHTML();
+  else if(S.tab==='customers')    main.innerHTML = customersHTML();
   else if(S.tab==='reports')      main.innerHTML = reportsHTML();
 
   attachEvents();
@@ -1210,6 +1396,20 @@ function attachEvents(){
   document.querySelectorAll('[data-r-period]').forEach(el=>{
     el.onclick = ()=>{ S.r_period=el.dataset.rPeriod; render(); };
   });
+
+  // customers search + inputs
+  const cus = document.getElementById('cu-search');
+  if(cus) cus.oninput = e=>{ S.cu_search = e.target.value; render(); };
+  const cpa = document.getElementById('cu-pay-amount');
+  if(cpa) cpa.oninput = e=>{ S.cu_pay_amount = e.target.value; };
+  const cpn = document.getElementById('cu-pay-note');
+  if(cpn) cpn.oninput = e=>{ S.cu_pay_note = e.target.value; };
+  const cen = document.getElementById('cu-edit-name');
+  if(cen) cen.oninput = e=>{ S.cu_edit_name = e.target.value; };
+  const cep = document.getElementById('cu-edit-phone');
+  if(cep) cep.oninput = e=>{ S.cu_edit_phone = e.target.value; };
+  const cnt = document.getElementById('cu-edit-notes');
+  if(cnt) cnt.oninput = e=>{ S.cu_edit_notes = e.target.value; };
 
   // dropdown picks: use onmousedown + preventDefault so blur can't close the list first
   document.querySelectorAll('[data-action="pick-cust"],[data-action="pick-prod"],[data-action="oe-pick-prod"],[data-action="oe-pick-cust"]').forEach(el=>{
@@ -1408,6 +1608,86 @@ async function handleAction(e, el){
   else if(a==='share-pdf'){
     const order = S.orders.find(o=>o.id===parseInt(el.dataset.id));
     if(order) sharePDF(order);
+  }
+
+  // ── customers ──
+  else if(a==='toggle-customer'){
+    const name = el.dataset.name;
+    if(S.cu_expanded === name){
+      S.cu_expanded = null; S.cu_detail = null; S.cu_editing = false; render();
+    } else {
+      S.cu_expanded = name; S.cu_detail = null; S.cu_editing = false;
+      S.cu_pay_amount = ''; S.cu_pay_note = '';
+      loadCustomerDetail(name); // sets loading and renders
+    }
+  }
+  else if(a==='start-edit-customer'){
+    if(!S.cu_detail) return;
+    S.cu_editing = true;
+    S.cu_edit_name = S.cu_detail.name;
+    S.cu_edit_phone = S.cu_detail.phone || '';
+    S.cu_edit_notes = S.cu_detail.notes || '';
+    render();
+  }
+  else if(a==='cancel-edit-customer'){
+    S.cu_editing = false; render();
+  }
+  else if(a==='save-customer'){
+    const oldName = el.dataset.name;
+    const newName = (S.cu_edit_name||'').trim();
+    if(!newName) return toast('Name required','error');
+    try{
+      if(newName !== oldName){
+        await api('/api/customers/'+encodeURIComponent(oldName)+'/rename',{
+          method:'PUT', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({new_name:newName})
+        });
+      }
+      await api('/api/customers/'+encodeURIComponent(newName)+'/meta',{
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({phone:S.cu_edit_phone, notes:S.cu_edit_notes})
+      });
+      S.cu_editing = false;
+      S.cu_expanded = newName;
+      toast('Saved','success');
+      await fetchAll();
+      await loadCustomerDetail(newName);
+    } catch(err){ toast(err.message,'error'); }
+  }
+  else if(a==='log-payment' || a==='log-payment-full'){
+    const name = el.dataset.name;
+    const amount = a==='log-payment-full'
+      ? parseFloat(el.dataset.amount)
+      : parseFloat(S.cu_pay_amount);
+    if(!amount || amount <= 0) return toast('Enter a valid amount','error');
+    try{
+      await api('/api/customers/'+encodeURIComponent(name)+'/payments',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({amount, note:S.cu_pay_note})
+      });
+      S.cu_pay_amount = ''; S.cu_pay_note = '';
+      toast('Payment logged','success');
+      await fetchAll();
+      await loadCustomerDetail(name);
+    } catch(err){ toast(err.message,'error'); }
+  }
+  else if(a==='del-payment'){
+    if(!await confirm('Delete this payment? Order balances will be restored.')) return;
+    const id = parseInt(el.dataset.id);
+    const name = el.dataset.name;
+    try{
+      await api('/api/payments/'+id,{method:'DELETE'});
+      toast('Payment deleted','success');
+      await fetchAll();
+      await loadCustomerDetail(name);
+    } catch(err){ toast(err.message,'error'); }
+  }
+  else if(a==='goto-customer-orders'){
+    const name = el.dataset.name;
+    S.tab = 'orders';
+    S.o_search = name;
+    S.o_filter = 'all';
+    render();
   }
 }
 
