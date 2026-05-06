@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>P. Ketwaroo Inventory System</title>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0b0d18;color:#c8cde8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;font-size:14px}
@@ -41,6 +44,28 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .stat.hero .stat-icon{background:rgba(45,200,117,.15);color:#2dc875}
 .stat.hero-amber{background:linear-gradient(135deg,#3a2e10 0%,#13162a 70%);border-color:#5a4612}
 .stat.hero-amber .stat-icon{background:rgba(240,168,32,.15);color:#f0a820}
+
+/* bold-flat tile variants (theme experiment) */
+.stat.bold{padding:24px;border-radius:24px;border:none;color:#fff;min-height:140px}
+.stat.bold .stat-top{color:rgba(255,255,255,.78);font-size:11px;letter-spacing:.6px}
+.stat.bold .stat-icon{background:rgba(255,255,255,.18);color:#fff}
+.stat.bold .stat-val{font-size:38px;color:#fff;letter-spacing:-1px;font-family:'Space Grotesk',-apple-system,sans-serif}
+.stat.bold .delta{background:rgba(255,255,255,.22);color:#fff}
+.stat.bold-coral{background:#f06352}
+.stat.bold-lavender{background:#7e6cef}
+.stat.bold-yellow{background:#f4c93f}
+.stat.bold-yellow,.stat.bold-yellow .stat-val{color:#1a1a2e}
+.stat.bold-yellow .stat-top{color:rgba(26,26,46,.65)}
+.stat.bold-yellow .stat-icon{background:rgba(26,26,46,.14);color:#1a1a2e}
+.stat.bold-yellow .delta{background:rgba(26,26,46,.14);color:#1a1a2e}
+.stat.bold-mint{background:#4eae65}
+
+.title-display{font-family:'Space Grotesk',-apple-system,sans-serif;font-size:42px;font-weight:700;color:#fff;letter-spacing:-1.5px;text-transform:uppercase;margin-bottom:20px;line-height:1}
+@media(max-width:640px){
+  .title-display{font-size:30px;margin-bottom:14px;letter-spacing:-1px}
+  .stat.bold{padding:18px;border-radius:20px;min-height:120px}
+  .stat.bold .stat-val{font-size:28px}
+}
 .delta{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600;width:fit-content}
 .delta.up{background:rgba(45,200,117,.14);color:#2dc875}
 .delta.down{background:rgba(224,82,82,.14);color:#e05252}
@@ -616,11 +641,12 @@ function dashboardHTML(){
   const yRev = yOrders.reduce((s,o)=>s+(parseFloat(o.total)||0),0);
 
   return `
+  <h1 class="title-display">Dashboard</h1>
   <div class="stats">
-    ${statCard({variant:'hero', icon:'💰', label:'Revenue Today', value:`$${fmt(st.todayRevenue)}`, delta:deltaChip(st.todayRevenue, yRev)})}
-    ${statCard({variant:'blue', icon:'📦', label:'Orders Today', value:st.todayOrders||0, delta:deltaChip(st.todayOrders, yOrders.length)})}
-    ${statCard({variant:'amber', icon:'⏳', label:'Pending', value:st.pendingOrders||0})}
-    ${statCard({variant:'red', icon:'⚠️', label:'Low Stock', value:st.lowStockCount||0})}
+    ${statCard({variant:'bold bold-coral', icon:'💰', label:'Revenue Today', value:`$${fmt(st.todayRevenue)}`, delta:deltaChip(st.todayRevenue, yRev)})}
+    ${statCard({variant:'bold bold-lavender', icon:'📦', label:'Orders Today', value:st.todayOrders||0, delta:deltaChip(st.todayOrders, yOrders.length)})}
+    ${statCard({variant:'bold bold-yellow', icon:'⏳', label:'Pending', value:st.pendingOrders||0})}
+    ${statCard({variant:'bold bold-mint', icon:'⚠️', label:'Low Stock', value:st.lowStockCount||0})}
   </div>
   <div class="card">
     <div class="sec-row">
@@ -649,6 +675,7 @@ function productsHTML(){
   );
   const f = S.p_form;
   return `
+  <h1 class="title-display">Products</h1>
   <div class="card">
     <div class="sec-title">${S.p_editId?'Edit Product':'Add Product'}</div>
     <div class="form-row">
@@ -698,6 +725,7 @@ function createOrderHTML(){
   const items = S.c_items;
   const total = items.reduce((s,i)=>s+i.price*i.qty,0);
   return `
+  <h1 class="title-display">Create Order</h1>
   <div class="card">
     <div class="sec-title">New Order</div>
     <div class="fg" style="margin-bottom:16px">
@@ -766,6 +794,7 @@ function ordersHTML(){
   }
   const deliverCount = S.orders.filter(needsDeliveryFn).length;
   return `
+  <h1 class="title-display">Orders</h1>
   <div class="search-wrap">
     <span class="search-ico">🔍</span>
     <input class="input" id="o-search" value="${esc(S.o_search)}" placeholder="Search by customer…"/>
@@ -903,10 +932,11 @@ function customersHTML(){
   const oweCount = S.customers_full.filter(c => (parseFloat(c.balance)||0) > 0.005).length;
 
   return `
+  <h1 class="title-display">Customers</h1>
   <div class="stats">
-    ${statCard({variant:'blue', icon:'👥', label:'Total Customers', value:S.customers_full.length})}
-    ${statCard({variant:'amber', icon:'💸', label:'With Balance', value:oweCount})}
-    ${statCard({variant:totalOwed > 0 ? 'hero-amber' : 'red', icon:'📊', label:'Total Owed', value:`$${fmt(totalOwed)}`})}
+    ${statCard({variant:'bold bold-lavender', icon:'👥', label:'Total Customers', value:S.customers_full.length})}
+    ${statCard({variant:'bold bold-yellow', icon:'💸', label:'With Balance', value:oweCount})}
+    ${statCard({variant:totalOwed > 0 ? 'bold bold-coral' : 'bold bold-mint', icon:'📊', label:'Total Owed', value:`$${fmt(totalOwed)}`})}
   </div>
   <div class="search-wrap">
     <span class="search-ico">🔍</span>
@@ -1179,33 +1209,22 @@ function reportsHTML(){
                     S.r_period==='week'  ? 'prev 7 days' :
                     S.r_period==='month' ? 'prev 30 days' : '';
 
+  const dChip = (cur, prev) => {
+    if(prev===null||prev===undefined||!R.prev) return '';
+    return deltaChip(cur, prev);
+  };
+  const vs = prevLabel ? ` · vs ${prevLabel}` : '';
+
   return `
+  <h1 class="title-display">Reports</h1>
   <div class="pills">
     ${periods.map(p=>`<div class="pill${S.r_period===p.id?' active':''}" data-r-period="${p.id}">${p.label}</div>`).join('')}
   </div>
 
   <div class="stats">
-    <div class="stat green">
-      <div class="stat-icon">💰</div>
-      <div>
-        <div class="stat-val">$${fmt(R.cur.revenue)}${R.prev?deltaPill(R.cur.revenue, R.prev.revenue):''}</div>
-        <div class="stat-lbl">Revenue${prevLabel?' · vs '+prevLabel:''}</div>
-      </div>
-    </div>
-    <div class="stat blue">
-      <div class="stat-icon">📦</div>
-      <div>
-        <div class="stat-val">${R.cur.count}${R.prev?deltaPill(R.cur.count, R.prev.count):''}</div>
-        <div class="stat-lbl">Orders${prevLabel?' · vs '+prevLabel:''}</div>
-      </div>
-    </div>
-    <div class="stat amber">
-      <div class="stat-icon">📊</div>
-      <div>
-        <div class="stat-val">$${fmt(R.cur.avg)}${R.prev?deltaPill(R.cur.avg, R.prev.avg):''}</div>
-        <div class="stat-lbl">Avg Order${prevLabel?' · vs '+prevLabel:''}</div>
-      </div>
-    </div>
+    ${statCard({variant:'bold bold-coral', icon:'💰', label:`Revenue${vs}`, value:`$${fmt(R.cur.revenue)}`, delta:dChip(R.cur.revenue, R.prev?.revenue)})}
+    ${statCard({variant:'bold bold-lavender', icon:'📦', label:`Orders${vs}`, value:R.cur.count, delta:dChip(R.cur.count, R.prev?.count)})}
+    ${statCard({variant:'bold bold-yellow', icon:'📊', label:`Avg Order${vs}`, value:`$${fmt(R.cur.avg)}`, delta:dChip(R.cur.avg, R.prev?.avg)})}
   </div>
 
   ${R.buckets && R.buckets.length>0 ? `
