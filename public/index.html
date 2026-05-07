@@ -338,64 +338,143 @@ function formatOrderText(order){
 function buildOrderPDF(order){
   if(!window.jspdf || !window.jspdf.jsPDF) return null;
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit:'pt', format:'letter' });
+  const W = 420, H = 720;
+  const doc = new jsPDF({ unit:'pt', format:[W, H] });
   const items = parseItems(order.items);
-  const date = new Date(order.created_at).toLocaleString();
-  const status = (order.status||'pending')==='loaded'?'Loaded':'Pending';
+  const date = new Date(order.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const M = 30, RIGHT = W - M;
 
-  let y = 56;
+  // Soft paper background
+  doc.setFillColor(252,252,248);
+  doc.rect(10, 10, W-20, H-20, 'F');
+  doc.setDrawColor(230,228,220); doc.setLineWidth(1);
+  doc.rect(10, 10, W-20, H-20, 'S');
+
+  // Header
+  let y = 48;
   doc.setFont('helvetica','bold'); doc.setFontSize(20);
-  doc.text('P. Ketwaroo & Sons', 56, y); y += 22;
-  doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(110);
-  doc.text(`Order #${order.id}  ·  ${date}`, 56, y); y += 24;
-  doc.setTextColor(0); doc.setFontSize(12);
-  doc.text(`Customer: ${order.customer_name}`, 56, y); y += 16;
-  doc.text(`Status: ${status}`, 56, y); y += 28;
+  doc.setTextColor(26,26,26);
+  doc.text('P. Ketwaroo & Sons', W/2, y, { align:'center' });
 
-  doc.setFont('helvetica','bold'); doc.setFontSize(11);
-  doc.text('Item', 56, y);
-  doc.text('Qty', 320, y);
-  doc.text('Price', 380, y);
-  doc.text('Total', 480, y);
-  doc.setLineWidth(0.5); doc.line(56, y+4, 540, y+4);
+  y += 30;
+  doc.setFont('helvetica','normal'); doc.setFontSize(12);
+  doc.setTextColor(107,107,107);
+  doc.text(`Order #${order.id} — ${date}`, M, y);
+
+  y += 28;
+  doc.setFontSize(13);
+  doc.setTextColor(107,107,107);
+  const forLabel = 'For: ';
+  doc.text(forLabel, M, y);
+  doc.setFont('helvetica','bold'); doc.setTextColor(26,26,26);
+  doc.text(String(order.customer_name||''), M + doc.getTextWidth(forLabel), y);
+
+  // Soft divider
   y += 18;
+  doc.setDrawColor(224,221,209); doc.setLineWidth(1);
+  doc.line(M, y, RIGHT, y);
 
-  doc.setFont('helvetica','normal');
+  // Items
+  y += 28;
+  let totalToDeliver = 0;
   for(const it of items){
-    if(y > 720){ doc.addPage(); y = 56; }
-    const q = parseInt(it.quantity)||0, t = parseInt(it.taken)||0;
-    doc.text(String(it.name).slice(0, 42), 56, y);
-    doc.text(String(q), 320, y);
-    doc.text('$'+fmt(it.price), 380, y);
-    doc.text('$'+fmt(it.price * q), 480, y);
+    if(y > H - 200){ doc.addPage(); y = 48; }
+    const q = parseInt(it.quantity)||0;
+    const t = parseInt(it.taken)||0;
+    const lineTotal = (parseFloat(it.price)||0) * q;
+
+    // Qty (right-aligned bold) | Name | Total (right-aligned bold)
+    doc.setFont('helvetica','bold'); doc.setFontSize(13);
+    doc.setTextColor(26,26,26);
+    doc.text(String(q), M + 28, y, { align:'right' });
+    doc.setFont('helvetica','normal');
+    doc.text(String(it.name||'').slice(0, 38), M + 44, y);
+    doc.setFont('helvetica','bold');
+    doc.text('$'+fmt(lineTotal), RIGHT, y, { align:'right' });
+
+    // Status sub-line
     y += 14;
-    if(t > 0){
-      doc.setTextColor(110); doc.setFontSize(9);
-      doc.text(t>=q ? `  (all ${q} picked up at order)` : `  (${t} picked up · ${q-t} to deliver)`, 70, y);
-      doc.setTextColor(0); doc.setFontSize(11);
-      y += 12;
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    if(q > 0 && t >= q){
+      doc.setTextColor(58,138,79); // green
+      doc.text('all picked up', M + 44, y);
+    } else if(t > 0){
+      doc.setTextColor(160,107,28); // amber
+      doc.text(`${t} picked up  ·  ${q-t} to deliver`, M + 44, y);
+      totalToDeliver += (q-t);
+    } else {
+      doc.setTextColor(160,107,28);
+      doc.text('to deliver', M + 44, y);
+      totalToDeliver += q;
     }
-    y += 4;
+    y += 22;
   }
 
-  y += 8;
-  doc.setLineWidth(1); doc.line(56, y, 540, y); y += 20;
+  // Divider
+  y += 4;
+  doc.setDrawColor(187,182,164); doc.setLineWidth(1);
+  doc.line(M, y, RIGHT, y);
+
+  // Total
+  y += 26;
   const totalNum = parseFloat(order.total)||0;
+  doc.setFont('helvetica','normal'); doc.setFontSize(15);
+  doc.setTextColor(26,26,26);
+  doc.text('Total', M, y);
+  doc.setFont('helvetica','bold'); doc.setFontSize(20);
+  doc.text('$'+fmt(totalNum), RIGHT, y, { align:'right' });
+
+  y += 14;
+  doc.setDrawColor(187,182,164); doc.setLineWidth(1);
+  doc.line(M, y, RIGHT, y);
+
+  // Payment
+  y += 26;
   const paidNum = parseFloat(order.amount_paid)||0;
-  doc.setFont('helvetica','bold'); doc.setFontSize(14);
-  doc.text(`Total: $${fmt(totalNum)}`, 380, y); y += 18;
   doc.setFont('helvetica','normal'); doc.setFontSize(11);
+  doc.setTextColor(107,107,107);
+  doc.text('Payment', M, y);
+
+  y += 20;
+  doc.setFontSize(13);
   if(paidNum <= 0){
-    doc.setTextColor(180,60,60);
-    doc.text(`Unpaid — pay on delivery: $${fmt(totalNum)}`, 380, y);
+    doc.setFont('helvetica','bold'); doc.setTextColor(176,58,58);
+    doc.text(`Unpaid — $${fmt(totalNum)} balance`, M, y);
   } else if(paidNum >= totalNum){
-    doc.setTextColor(40,140,80);
-    doc.text(`Paid in full`, 380, y);
+    doc.setFont('helvetica','bold'); doc.setTextColor(58,138,79);
+    doc.text(`Paid in full — $${fmt(totalNum)}`, M, y);
   } else {
-    doc.setTextColor(180,120,30);
-    doc.text(`Paid: $${fmt(paidNum)}  ·  Owed: $${fmt(totalNum - paidNum)}`, 380, y);
+    doc.setFont('helvetica','bold'); doc.setTextColor(26,26,26);
+    const part1 = `$${fmt(paidNum)} paid`;
+    doc.text(part1, M, y);
+    const w1 = doc.getTextWidth(part1);
+    doc.setFont('helvetica','normal'); doc.setTextColor(107,107,107);
+    const sep = '  ·  ';
+    doc.text(sep, M + w1, y);
+    const w2 = doc.getTextWidth(sep);
+    doc.setFont('helvetica','bold'); doc.setTextColor(176,58,58);
+    doc.text(`$${fmt(totalNum-paidNum)} balance`, M + w1 + w2, y);
   }
-  doc.setTextColor(0);
+
+  // Delivery
+  y += 32;
+  doc.setFont('helvetica','normal'); doc.setFontSize(11);
+  doc.setTextColor(107,107,107);
+  doc.text('Delivery', M, y);
+  y += 20;
+  doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  if(totalToDeliver > 0){
+    doc.setTextColor(160,107,28);
+    doc.text(`${totalToDeliver} item${totalToDeliver===1?'':'s'} to deliver`, M, y);
+  } else {
+    doc.setTextColor(58,138,79);
+    doc.text('All picked up', M, y);
+  }
+
+  // Footer
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  doc.setTextColor(160,160,160);
+  doc.text('— P. Ketwaroo & Sons —', W/2, H - 42, { align:'center' });
 
   return doc.output('blob');
 }
@@ -430,53 +509,102 @@ async function shareWhatsApp(order){
 
 function sharePDF(order){
   const items = parseItems(order.items);
-  const date = new Date(order.created_at).toLocaleString();
-  const status = (order.status||'pending')==='loaded'?'Loaded':'Pending';
+  const date = new Date(order.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  let totalToDeliver = 0;
   const rows = items.map(i => {
     const q = parseInt(i.quantity)||0, t = parseInt(i.taken)||0;
-    const note = t>0 ? `<div style="font-size:12px;color:#666">${t>=q?`all ${q} picked up`:`${t} picked up · ${q-t} to deliver`}</div>` : '';
+    const lineTotal = (parseFloat(i.price)||0) * q;
+    let statusHtml;
+    if(q > 0 && t >= q){
+      statusHtml = `<div class="status picked">✓ all picked up</div>`;
+    } else if(t > 0){
+      statusHtml = `<div class="status partial">• ${t} picked up · ${q-t} to deliver</div>`;
+      totalToDeliver += (q-t);
+    } else {
+      statusHtml = `<div class="status deliver">→ to deliver</div>`;
+      totalToDeliver += q;
+    }
     return `
-    <tr>
-      <td>${esc(i.name)}${note}</td>
-      <td style="text-align:center">${q}</td>
-      <td style="text-align:right">$${fmt(i.price)}</td>
-      <td style="text-align:right">$${fmt(i.price*q)}</td>
-    </tr>`;
+    <div class="item">
+      <div class="qty">${q}</div>
+      <div class="name">${esc(i.name)}${statusHtml}</div>
+      <div class="line-total">$${fmt(lineTotal)}</div>
+    </div>`;
   }).join('');
+
   const totalNum = parseFloat(order.total)||0;
   const paidNum = parseFloat(order.amount_paid)||0;
-  const payHTML = paidNum<=0
-    ? `<div class="muted" style="color:#b34d4d;font-weight:600;text-align:right">Unpaid — pay on delivery</div>`
-    : paidNum>=totalNum
-    ? `<div class="muted" style="color:#2a8857;font-weight:600;text-align:right">Paid in full</div>`
-    : `<div class="muted" style="color:#b87a1c;font-weight:600;text-align:right">Paid: $${fmt(paidNum)} · Owed: $${fmt(totalNum-paidNum)}</div>`;
+  let payHtml;
+  if(paidNum <= 0){
+    payHtml = `<div class="pay-amt unpaid">Unpaid — $${fmt(totalNum)} balance</div>`;
+  } else if(paidNum >= totalNum){
+    payHtml = `<div class="pay-amt paid">Paid in full — $${fmt(totalNum)}</div>`;
+  } else {
+    payHtml = `<div class="pay-amt"><strong>$${fmt(paidNum)} paid</strong> <span class="dot">·</span> <strong class="balance">$${fmt(totalNum-paidNum)} balance</strong></div>`;
+  }
+  const deliveryHtml = totalToDeliver > 0
+    ? `<div class="delivery-amt to-deliver">${totalToDeliver} item${totalToDeliver===1?'':'s'} to deliver</div>`
+    : `<div class="delivery-amt all-picked">All picked up</div>`;
+
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Order #${order.id}</title>
 <style>
-  body{font-family:-apple-system,Segoe UI,Arial,sans-serif;padding:28px;color:#000;max-width:640px;margin:0 auto}
-  h1{margin:0 0 4px;font-size:22px}
-  .muted{color:#666;font-size:13px}
-  .meta{margin-top:10px;font-size:14px}
-  table{width:100%;border-collapse:collapse;margin-top:18px}
-  th,td{padding:8px 10px;border-bottom:1px solid #ddd;font-size:14px}
-  th{text-align:left;background:#f5f5f5;font-weight:600}
-  .total{margin-top:18px;font-size:18px;font-weight:700;text-align:right;border-top:2px solid #000;padding-top:10px}
-  .actions{margin-top:28px;text-align:center}
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;background:#eee;margin:0;padding:24px;color:#1a1a1a}
+  .receipt{background:#fcfcf8;border:1px solid #e6e4dc;max-width:420px;margin:0 auto;padding:30px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+  .title{text-align:center;font-size:22px;font-weight:700;letter-spacing:-.3px;margin:0 0 22px}
+  .meta{font-size:13px;color:#6b6b6b;margin-bottom:14px}
+  .for{font-size:14px;margin-bottom:16px}
+  .for .label{color:#6b6b6b}
+  .for .name{font-weight:600}
+  .divider-soft{border:none;border-top:1px solid #e0ddd1;margin:0 0 22px}
+  .divider-strong{border:none;border-top:1px solid #bbb6a4;margin:18px 0}
+  .item{display:grid;grid-template-columns:32px 1fr auto;gap:12px;align-items:baseline;margin-bottom:18px}
+  .item .qty{text-align:right;font-weight:600;font-size:14px}
+  .item .name{font-size:14px}
+  .item .line-total{font-weight:600;font-size:14px}
+  .status{font-size:11px;margin-top:3px}
+  .status.picked{color:#3a8a4f}
+  .status.partial,.status.deliver{color:#a06b1c}
+  .total-row{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px}
+  .total-row .label{font-size:16px}
+  .total-row .amt{font-size:22px;font-weight:700}
+  .section-label{font-size:12px;color:#6b6b6b;margin-top:18px;margin-bottom:6px}
+  .pay-amt{font-size:14px}
+  .pay-amt .dot{color:#6b6b6b;margin:0 4px}
+  .pay-amt .balance{color:#b03a3a}
+  .pay-amt.unpaid{color:#b03a3a;font-weight:600}
+  .pay-amt.paid{color:#3a8a4f;font-weight:600}
+  .delivery-amt{font-size:14px;font-weight:600}
+  .delivery-amt.to-deliver{color:#a06b1c}
+  .delivery-amt.all-picked{color:#3a8a4f}
+  .footer{text-align:center;color:#a0a0a0;font-size:10px;margin-top:36px}
+  .actions{margin-top:24px;text-align:center}
   .actions button{padding:10px 22px;font-size:14px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;margin:0 4px}
-  @media print{ .actions{display:none} body{padding:12px} }
+  .actions button.secondary{background:#6b7280}
+  @media print{
+    body{background:#fff;padding:0}
+    .receipt{box-shadow:none;border:none;max-width:none}
+    .actions{display:none}
+  }
 </style></head><body>
-  <h1>P. Ketwaroo &amp; Sons</h1>
-  <div class="muted">Order #${order.id} &middot; ${esc(date)}</div>
-  <div class="meta"><strong>Customer:</strong> ${esc(order.customer_name)}</div>
-  <div class="meta"><strong>Status:</strong> ${status}</div>
-  <table>
-    <thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>
-  <div class="total">Total: $${fmt(order.total)}</div>
-  ${payHTML}
+  <div class="receipt">
+    <div class="title">P. Ketwaroo &amp; Sons</div>
+    <div class="meta">Order #${order.id} — ${esc(date)}</div>
+    <div class="for"><span class="label">For: </span><span class="name">${esc(order.customer_name)}</span></div>
+    <hr class="divider-soft"/>
+    ${rows}
+    <hr class="divider-strong"/>
+    <div class="total-row"><div class="label">Total</div><div class="amt">$${fmt(totalNum)}</div></div>
+    <hr class="divider-strong"/>
+    <div class="section-label">Payment</div>
+    ${payHtml}
+    <div class="section-label">Delivery</div>
+    ${deliveryHtml}
+    <div class="footer">— P. Ketwaroo &amp; Sons —</div>
+  </div>
   <div class="actions">
     <button onclick="window.print()">Print / Save as PDF</button>
-    <button onclick="window.close()" style="background:#6b7280">Close</button>
+    <button class="secondary" onclick="window.close()">Close</button>
   </div>
 </body></html>`;
   const w = window.open('', '_blank');
