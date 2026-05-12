@@ -293,6 +293,8 @@ const S = {
   c_cust: '', c_prod: '', c_items: [],
   c_cust_open: false, c_prod_open: false,
   c_pay_mode: 'unpaid', c_pay_custom: '',
+  // scan-list (photo of handwritten list)
+  scan_open: false, scan_busy: false, scan_results: null, scan_preview: null, scan_error: '',
   // customers tab
   customers_full: [],
   cu_search: '', cu_expanded: null, cu_detail: null, cu_loading: false,
@@ -304,6 +306,33 @@ let _restoringFocus = false;
 const fmt = n => parseFloat(n||0).toFixed(2);
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function parseItems(v){ if(Array.isArray(v))return v; try{return JSON.parse(v);}catch(e){return[];} }
+
+// Resize/compress an image File to keep upload payloads small.
+// Returns { dataUrl, base64, mime }
+function downsizeImage(file, maxDim, quality){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        const scale = Math.min(1, maxDim / Math.max(width, height));
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const base64 = dataUrl.split(',')[1];
+        resolve({ dataUrl, base64, mime: 'image/jpeg' });
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 // ═══════════════════════════════════════════════════════════
 // SHARE ORDER (WhatsApp + PDF)
@@ -756,6 +785,63 @@ function statCard({variant, icon, label, value, delta}){
     </div>`;
 }
 
+function scanModalHTML(){
+  const r = S.scan_results;
+  const conf = c => c==='high'?'#1f9d55':c==='medium'?'#c79422':'#c64545';
+  const confBg = c => c==='high'?'#e3f6e9':c==='medium'?'#fdf4dc':'#fbe2e2';
+  const body = S.scan_busy
+    ? `<div style="padding:32px;text-align:center;color:#8b96b8">⏳ Reading the list… this can take 10–20 seconds.</div>`
+    : S.scan_error
+      ? `<div style="padding:18px;color:#c64545">${esc(S.scan_error)}</div>`
+      : !r
+        ? `<div style="padding:18px;color:#8b96b8">
+            <p style="margin-bottom:14px">Take a clear photo of the handwritten list and upload. Tips:</p>
+            <ul style="padding-left:20px;color:#8b96b8;line-height:1.6">
+              <li>Flat, well-lit page</li>
+              <li>Whole list in frame</li>
+              <li>Camera roughly straight overhead</li>
+            </ul>
+            <div style="margin-top:18px"><button class="btn primary" data-action="scan-pick">Choose photo</button></div>
+          </div>`
+        : `
+          <div style="display:flex;gap:16px;flex-wrap:wrap">
+            ${S.scan_preview ? `<div style="flex:0 0 240px"><img src="${S.scan_preview}" style="max-width:240px;max-height:320px;border-radius:8px;border:1px solid #ddd"/></div>` : ''}
+            <div style="flex:1;min-width:280px">
+              <p style="margin-bottom:10px;color:#8b96b8;font-size:13px">${r.items.length} line${r.items.length===1?'':'s'} detected. Uncheck anything wrong, edit qty, then add to order.</p>
+              ${r.items.map((it,i)=>`
+                <div style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #eef0f5">
+                  <input type="checkbox" data-action="scan-toggle" data-i="${i}" ${it._skip?'':'checked'} ${it.product_id?'':'disabled'} style="width:18px;height:18px"/>
+                  <div style="flex:1">
+                    <div style="font-weight:600">${it.product_id ? esc(it.name) : `<span style="color:#c64545">⚠ ${esc(it.raw_text||'(unreadable)')}</span>`}</div>
+                    <div style="font-size:12px;color:#8b96b8">
+                      ${it.product_id ? `$${fmt(it.price)} • stock ${it.stock}` : 'No match — add manually after'}
+                      ${it.note ? ` • ${esc(it.note)}` : ''}
+                      ${it.raw_text && it.product_id ? ` • written: "${esc(it.raw_text)}"` : ''}
+                    </div>
+                  </div>
+                  <span style="background:${confBg(it.confidence)};color:${conf(it.confidence)};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${it.confidence}</span>
+                  <input class="input" type="number" min="1" value="${it.qty}" data-action="scan-qty" data-i="${i}" style="width:60px;padding:4px 6px;text-align:center"/>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <div style="margin-top:18px;display:flex;gap:10px;justify-content:flex-end">
+            <button class="btn" data-action="scan-pick">Try another photo</button>
+            <button class="btn success" data-action="scan-add">Add checked items to order</button>
+          </div>`;
+
+  return `
+    <div class="modal-bg" data-action="scan-close-bg" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px">
+      <div style="background:#fff;border-radius:14px;max-width:780px;width:100%;max-height:90vh;overflow:auto;padding:20px" onclick="event.stopPropagation()">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <h2 style="margin:0;font-size:20px">📷 Scan handwritten list</h2>
+          <button class="btn" data-action="scan-close">✕</button>
+        </div>
+        ${body}
+      </div>
+    </div>`;
+}
+
 // ═══════════════════════════════════════════════════════════
 // TABS HTML
 // ═══════════════════════════════════════════════════════════
@@ -875,7 +961,13 @@ function createOrderHTML(){
           </div>`).join('')}
         </div>
       </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <input type="file" id="scan-file" accept="image/*" capture="environment" style="display:none"/>
+        <button class="btn" data-action="scan-open">📷 Scan list from photo</button>
+        <span style="color:#8b96b8;font-size:13px">Snap or upload a pic of the handwritten list</span>
+      </div>
     </div>
+    ${S.scan_open ? scanModalHTML() : ''}
     ${items.length>0?`
     <div>
       ${items.map(i=>`
@@ -1540,6 +1632,34 @@ function attachEvents(){
   document.querySelectorAll('input[name="c-pay"]').forEach(r=>{
     r.onchange = e => { S.c_pay_mode = e.target.value; render(); };
   });
+
+  // scan-list file input
+  const sf = document.getElementById('scan-file');
+  if(sf) sf.onchange = async e => {
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    if(!file.type.startsWith('image/')){ toast('Pick an image file','error'); return; }
+    S.scan_busy=true; S.scan_error=''; S.scan_results=null; render();
+    try {
+      const { dataUrl, base64, mime } = await downsizeImage(file, 1600, 0.85);
+      S.scan_preview = dataUrl;
+      const res = await fetch('/api/scan-list', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ image: base64, mime_type: mime })
+      });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error || 'Scan failed');
+      S.scan_results = data;
+      if(!data.items || data.items.length === 0){
+        S.scan_error = 'Could not read any items from that photo. Try a clearer, brighter shot.';
+      }
+    } catch(err) {
+      S.scan_error = err.message;
+    } finally {
+      S.scan_busy=false; sf.value=''; render();
+    }
+  };
   const cpc = document.getElementById('c-pay-custom');
   if(cpc) cpc.onblur = e => {
     const v = parseFloat(e.target.value);
@@ -1624,6 +1744,10 @@ function attachEvents(){
   document.querySelectorAll('[data-action="toggle-item"]').forEach(el=>{
     el.onchange = e=>handleAction(e,el);
   });
+  // scan-toggle (checkbox) needs change, scan-qty (number input) needs change too
+  document.querySelectorAll('[data-action="scan-toggle"],[data-action="scan-qty"]').forEach(el=>{
+    el.onchange = e=>handleAction(e,el);
+  });
 }
 
 async function handleAction(e, el){
@@ -1675,6 +1799,42 @@ async function handleAction(e, el){
     if(it){ it.qty++; render(); }
   }
   else if(a==='remove-item'){ S.c_items=S.c_items.filter(i=>i.id!==parseInt(el.dataset.id)); render(); }
+  else if(a==='scan-open'){
+    S.scan_open=true; S.scan_results=null; S.scan_error=''; S.scan_preview=null; render();
+  }
+  else if(a==='scan-close' || a==='scan-close-bg'){
+    if(a==='scan-close-bg' && el.tagName !== 'DIV') return;
+    S.scan_open=false; S.scan_results=null; S.scan_error=''; S.scan_preview=null; render();
+  }
+  else if(a==='scan-pick'){
+    document.getElementById('scan-file').click();
+  }
+  else if(a==='scan-toggle'){
+    const i=parseInt(el.dataset.i);
+    if(S.scan_results && S.scan_results.items[i]){
+      S.scan_results.items[i]._skip = !el.checked;
+    }
+  }
+  else if(a==='scan-qty'){
+    const i=parseInt(el.dataset.i);
+    if(S.scan_results && S.scan_results.items[i]){
+      S.scan_results.items[i].qty = Math.max(1, parseInt(el.value)||1);
+    }
+  }
+  else if(a==='scan-add'){
+    if(!S.scan_results) return;
+    let added=0, skipped=0;
+    for(const it of S.scan_results.items){
+      if(it._skip || !it.product_id) { if(!it.product_id) skipped++; continue; }
+      const ex=S.c_items.find(x=>x.id===it.product_id);
+      if(ex) ex.qty += it.qty;
+      else S.c_items.push({id:it.product_id, name:it.name, price:it.price, qty:it.qty, taken:0});
+      added++;
+    }
+    S.scan_open=false; S.scan_results=null; S.scan_preview=null;
+    toast(`Added ${added} item${added===1?'':'s'}${skipped?` (${skipped} skipped — no match)`:''}`, added>0?'success':'error');
+    render();
+  }
   else if(a==='place-order'){
     if(!S.c_cust.trim()) return toast('Customer name required','error');
     if(!S.c_items.length) return toast('Add at least one item','error');

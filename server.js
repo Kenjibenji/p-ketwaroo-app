@@ -2,13 +2,17 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const path = require('path');
+const Anthropic = require('@anthropic-ai/sdk');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(express.json());
+// Allow larger bodies for photo uploads
+app.use(express.json({ limit: '15mb' }));
+
+const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -552,6 +556,106 @@ app.delete('/api/orders/:id', async (req, res) => {
     res.json({ message: 'Order deleted' });
   } catch {
     res.status(500).json({ error: 'Failed to delete order' });
+  }
+});
+
+// ===== SCAN LIST (photo of handwritten list -> matched line items) =====
+
+app.post('/api/scan-list', async (req, res) => {
+  if (!anthropic) {
+    return res.status(503).json({ error: 'Scanning is unavailable: ANTHROPIC_API_KEY is not configured on the server.' });
+  }
+  const { image, mime_type } = req.body || {};
+  if (!image || typeof image !== 'string') {
+    return res.status(400).json({ error: 'image (base64 string) is required' });
+  }
+  const mime = (mime_type || 'image/jpeg').toString();
+  if (!/^image\/(jpeg|png|webp|gif)$/.test(mime)) {
+    return res.status(400).json({ error: 'image must be jpeg/png/webp/gif' });
+  }
+
+  try {
+    // Build the product catalog string. Stable order = better cache hit rate.
+    const prodRes = await pool.query('SELECT id, name, category, price, stock FROM products ORDER BY id');
+    const products = prodRes.rows;
+    const catalogText = products
+      .map(p => `${p.id}|${p.name}|${p.category}|${parseFloat(p.price)}|${p.stock}`)
+      .join('\n');
+
+    const systemBlocks = [
+      {
+        type: 'text',
+        text:
+          "You read photos of handwritten customer order lists for a Guyanese wholesale shop (P. Ketwaroo & Sons) " +
+          "and convert them into structured order items by matching against this product catalog.\n\n" +
+          "Catalog (id|name|category|price|stock):\n" + catalogText + "\n\n" +
+          "Matching rules:\n" +
+          "- Customers use abbreviations, shorthand, Creole spelling, and inconsistent casing. " +
+          "  Examples: 'sard 1/4' -> '1/4 sard'; 'corn mut' -> 'corned mutton suri'; 'cnd milk' -> 'Cndse mlk moi'.\n" +
+          "- If a line clearly maps to one catalog product, set product_id and confidence='high'.\n" +
+          "- If two products plausibly match, pick the most likely and set confidence='medium', list other candidates in notes.\n" +
+          "- If you cannot match at all, set product_id=null and confidence='low' so the human reviews it.\n" +
+          "- Quantity: if not written, default qty=1. Numbers like '1c' or '1 case' mean 1.\n" +
+          "- Skip lines that are obviously not items (totals, dates, names, doodles).\n",
+        cache_control: { type: 'ephemeral' },
+      },
+    ];
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 2048,
+      system: systemBlocks,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mime, data: image } },
+            {
+              type: 'text',
+              text:
+                "Read every line on this handwritten list. Return STRICT JSON only, no markdown fence, in this exact shape:\n" +
+                '{"items":[{"product_id":number|null,"qty":number,"confidence":"high"|"medium"|"low","raw_text":string,"note":string}]}\n' +
+                "raw_text = the line as written. note = brief explanation if confidence < high (e.g. 'could also be X')."
+            },
+          ],
+        },
+      ],
+    });
+
+    const text = (msg.content || []).filter(c => c.type === 'text').map(c => c.text).join('').trim();
+    let parsed;
+    try {
+      // Strip possible code fences just in case
+      const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
+      parsed = JSON.parse(cleaned);
+    } catch (e) {
+      console.error('scan-list parse error:', e.message, 'raw:', text.slice(0, 500));
+      return res.status(502).json({ error: 'Could not parse scan response', raw: text });
+    }
+
+    // Enrich with current product data so the client can render confidently
+    const byId = new Map(products.map(p => [p.id, p]));
+    const items = (parsed.items || []).map(it => {
+      const p = it.product_id ? byId.get(it.product_id) : null;
+      return {
+        product_id: p ? p.id : null,
+        name: p ? p.name : null,
+        price: p ? parseFloat(p.price) : null,
+        stock: p ? p.stock : null,
+        qty: Math.max(1, parseInt(it.qty) || 1),
+        confidence: ['high', 'medium', 'low'].includes(it.confidence) ? it.confidence : 'low',
+        raw_text: (it.raw_text || '').toString().slice(0, 200),
+        note: (it.note || '').toString().slice(0, 200),
+      };
+    });
+
+    res.json({
+      items,
+      usage: msg.usage,
+    });
+  } catch (err) {
+    console.error('scan-list error:', err);
+    res.status(500).json({ error: err?.message || 'Scan failed' });
   }
 });
 
