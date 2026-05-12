@@ -1,5 +1,5 @@
 {
-  "takenAt": "2026-05-12T16:43:17.253Z",
+  "takenAt": "2026-05-12T17:42:09.982Z",
   "counts": {
     "products": 102,
     "orders": 0
@@ -11,7 +11,7 @@
       "category": "Canned Goods",
       "price": "4900.00",
       "stock": 98,
-      "created_at": "2026-05-12T20:37:54.306Z"
+      "created_at": "2026-05-12T17:37:54.306Z"
     },
     {
       "id": 2,
@@ -19,7 +19,7 @@
       "category": "Canned Goods",
       "price": "6500.00",
       "stock": 99,
-      "created_at": "2026-05-12T20:37:54.389Z"
+      "created_at": "2026-05-12T17:37:54.389Z"
     },
     {
       "id": 3,
@@ -27,7 +27,7 @@
       "category": "Oils & Cooking",
       "price": "7800.00",
       "stock": 91,
-      "created_at": "2026-05-12T20:37:54.470Z"
+      "created_at": "2026-05-12T17:37:54.470Z"
     },
     {
       "id": 4,
@@ -35,7 +35,7 @@
       "category": "Oils & Cooking",
       "price": "8800.00",
       "stock": 65,
-      "created_at": "2026-05-12T20:37:54.552Z"
+      "created_at": "2026-05-12T17:37:54.552Z"
     },
     {
       "id": 5,
@@ -43,7 +43,7 @@
       "category": "Other",
       "price": "9700.00",
       "stock": 10,
-      "created_at": "2026-05-12T20:37:54.642Z"
+      "created_at": "2026-05-12T17:37:54.642Z"
     },
     {
       "id": 6,
@@ -51,7 +51,7 @@
       "category": "Packaging",
       "price": "9900.00",
       "stock": 43,
-      "created_at": "2026-05-12T20:37:54.728Z"
+      "created_at": "2026-05-12T17:37:54.728Z"
     },
     {
       "id": 7,
@@ -59,7 +59,7 @@
       "category": "Packaging",
       "price": "8200.00",
       "stock": 88,
-      "created_at": "2026-05-12T20:37:54.808Z"
+      "created_at": "2026-05-12T17:37:54.808Z"
     },
     {
       "id": 8,
@@ -67,7 +67,7 @@
       "category": "Oils & Cooking",
       "price": "7400.00",
       "stock": 98,
-      "created_at": "2026-05-12T20:37:54.893Z"
+      "created_at": "2026-05-12T17:37:54.893Z"
     },
     {
       "id": 9,
@@ -75,7 +75,7 @@
       "category": "Packaging",
       "price": "20500.00",
       "stock": 95,
-      "created_at": "2026-05-12T20:37:54.974Z"
+      "created_at": "2026-05-12T17:37:54.974Z"
     },
     {
       "id": 10,
@@ -83,7 +83,7 @@
       "category": "Packaging",
       "price": "20500.00",
       "stock": 99,
-      "created_at": "2026-05-12T20:37:55.057Z"
+      "created_at": "2026-05-12T17:37:55.057Z"
     },
     {
       "id": 11,
@@ -91,7 +91,7 @@
       "category": "Packaging",
       "price": "20500.00",
       "stock": 96,
-      "created_at": "2026-05-12T20:37:55.138Z"
+      "created_at": "2026-05-12T17:37:55.138Z"
     },
     {
       "id": 12,
@@ -99,7 +99,7 @@
       "category": "Other",
       "price": "25000.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:55.220Z"
+      "created_at": "2026-05-12T17:37:55.220Z"
     },
     {
       "id": 13,
@@ -107,7 +107,7 @@
       "category": "Dry Goods",
       "price": "13000.00",
       "stock": 99,
-      "created_at": "2026-05-12T20:37:55.301Z"
+      "created_at": "2026-05-12T17:37:55.301Z"
     },
     {
       "id": 14,
@@ -115,7 +115,7 @@
       "category": "Dry Goods",
       "price": "6300.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:55.382Z"
+      "created_at": "2026-05-12T17:37:55.382Z"
     },
     {
       "id": 15,
@@ -123,7 +123,7 @@
       "category": "Canned Goods",
       "price": "4100.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:55.465Z"
+      "created_at": "2026-05-12T17:37:55.465Z"
     },
     {
       "id": 16,
@@ -131,7 +131,7 @@
       "category": "Packaging",
       "price": "3850.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:55.546Z"
+      "created_at": "2026-05-12T17:37:55.546Z"
     },
     {
       "id": 17,
@@ -139,7 +139,7 @@
       "category": "Cleaning",
       "price": "50500.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:55.627Z"
+      "created_at": "2026-05-12T17:37:55.627Z"
     },
     {
       "id": 18,
@@ -147,7 +147,7 @@
       "category": "Beverages",
       "price": "3400.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:55.713Z"
+      "created_at": "2026-05-12T17:37:55.713Z"
     },
     {
       "id": 19,
@@ -155,7 +155,7 @@
       "category": "Canned Goods",
       "price": "10400.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:55.797Z"
+      "created_at": "2026-05-12T17:37:55.797Z"
     },
     {
       "id": 20,
@@ -163,7 +163,7 @@
       "category": "Beverages",
       "price": "7600.00",
       "stock": 99,
-      "created_at": "2026-05-12T20:37:55.879Z"
+      "created_at": "2026-05-12T17:37:55.879Z"
     },
     {
       "id": 21,
@@ -171,7 +171,7 @@
       "category": "Packaging",
       "price": "13000.00",
       "stock": 60,
-      "created_at": "2026-05-12T20:37:55.962Z"
+      "created_at": "2026-05-12T17:37:55.962Z"
     },
     {
       "id": 22,
@@ -179,7 +179,7 @@
       "category": "Dairy",
       "price": "6000.00",
       "stock": 99,
-      "created_at": "2026-05-12T20:37:56.046Z"
+      "created_at": "2026-05-12T17:37:56.046Z"
     },
     {
       "id": 23,
@@ -187,7 +187,7 @@
       "category": "Beverages",
       "price": "1750.00",
       "stock": 83,
-      "created_at": "2026-05-12T20:37:56.129Z"
+      "created_at": "2026-05-12T17:37:56.129Z"
     },
     {
       "id": 24,
@@ -195,7 +195,7 @@
       "category": "Household",
       "price": "7600.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:56.212Z"
+      "created_at": "2026-05-12T17:37:56.212Z"
     },
     {
       "id": 25,
@@ -203,7 +203,7 @@
       "category": "Household",
       "price": "9600.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:56.329Z"
+      "created_at": "2026-05-12T17:37:56.329Z"
     },
     {
       "id": 26,
@@ -211,7 +211,7 @@
       "category": "Other",
       "price": "39500.00",
       "stock": 95,
-      "created_at": "2026-05-12T20:37:56.411Z"
+      "created_at": "2026-05-12T17:37:56.411Z"
     },
     {
       "id": 27,
@@ -219,7 +219,7 @@
       "category": "Dairy",
       "price": "46500.00",
       "stock": 88,
-      "created_at": "2026-05-12T20:37:56.494Z"
+      "created_at": "2026-05-12T17:37:56.494Z"
     },
     {
       "id": 28,
@@ -227,7 +227,7 @@
       "category": "Dry Goods",
       "price": "21000.00",
       "stock": 90,
-      "created_at": "2026-05-12T20:37:56.576Z"
+      "created_at": "2026-05-12T17:37:56.576Z"
     },
     {
       "id": 29,
@@ -235,7 +235,7 @@
       "category": "Beverages",
       "price": "6000.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:56.658Z"
+      "created_at": "2026-05-12T17:37:56.658Z"
     },
     {
       "id": 30,
@@ -243,7 +243,7 @@
       "category": "Cleaning",
       "price": "0.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:56.740Z"
+      "created_at": "2026-05-12T17:37:56.740Z"
     },
     {
       "id": 31,
@@ -251,7 +251,7 @@
       "category": "Dairy",
       "price": "11300.00",
       "stock": 78,
-      "created_at": "2026-05-12T20:37:56.823Z"
+      "created_at": "2026-05-12T17:37:56.823Z"
     },
     {
       "id": 32,
@@ -259,7 +259,7 @@
       "category": "Dairy",
       "price": "5200.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:56.904Z"
+      "created_at": "2026-05-12T17:37:56.904Z"
     },
     {
       "id": 33,
@@ -267,7 +267,7 @@
       "category": "Dairy",
       "price": "5200.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:56.986Z"
+      "created_at": "2026-05-12T17:37:56.986Z"
     },
     {
       "id": 34,
@@ -275,7 +275,7 @@
       "category": "Baking",
       "price": "14800.00",
       "stock": 94,
-      "created_at": "2026-05-12T20:37:57.068Z"
+      "created_at": "2026-05-12T17:37:57.068Z"
     },
     {
       "id": 35,
@@ -283,7 +283,7 @@
       "category": "Beverages",
       "price": "14500.00",
       "stock": 38,
-      "created_at": "2026-05-12T20:37:57.150Z"
+      "created_at": "2026-05-12T17:37:57.150Z"
     },
     {
       "id": 36,
@@ -291,7 +291,7 @@
       "category": "Household",
       "price": "9100.00",
       "stock": 80,
-      "created_at": "2026-05-12T20:37:57.234Z"
+      "created_at": "2026-05-12T17:37:57.234Z"
     },
     {
       "id": 37,
@@ -299,7 +299,7 @@
       "category": "Personal Care",
       "price": "18500.00",
       "stock": 91,
-      "created_at": "2026-05-12T20:37:57.316Z"
+      "created_at": "2026-05-12T17:37:57.316Z"
     },
     {
       "id": 38,
@@ -307,7 +307,7 @@
       "category": "Personal Care",
       "price": "10900.00",
       "stock": 89,
-      "created_at": "2026-05-12T20:37:57.407Z"
+      "created_at": "2026-05-12T17:37:57.407Z"
     },
     {
       "id": 39,
@@ -315,7 +315,7 @@
       "category": "Oils & Cooking",
       "price": "7500.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:57.489Z"
+      "created_at": "2026-05-12T17:37:57.489Z"
     },
     {
       "id": 40,
@@ -323,7 +323,7 @@
       "category": "Canned Goods",
       "price": "10400.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:57.572Z"
+      "created_at": "2026-05-12T17:37:57.572Z"
     },
     {
       "id": 41,
@@ -331,7 +331,7 @@
       "category": "Canned Goods",
       "price": "14000.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:57.665Z"
+      "created_at": "2026-05-12T17:37:57.665Z"
     },
     {
       "id": 42,
@@ -339,7 +339,7 @@
       "category": "Packaging",
       "price": "6400.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:57.746Z"
+      "created_at": "2026-05-12T17:37:57.746Z"
     },
     {
       "id": 43,
@@ -347,7 +347,7 @@
       "category": "Packaging",
       "price": "3600.00",
       "stock": 76,
-      "created_at": "2026-05-12T20:37:57.829Z"
+      "created_at": "2026-05-12T17:37:57.829Z"
     },
     {
       "id": 44,
@@ -355,7 +355,7 @@
       "category": "Canned Goods",
       "price": "5800.00",
       "stock": 98,
-      "created_at": "2026-05-12T20:37:57.918Z"
+      "created_at": "2026-05-12T17:37:57.918Z"
     },
     {
       "id": 45,
@@ -363,7 +363,7 @@
       "category": "Packaging",
       "price": "15000.00",
       "stock": 80,
-      "created_at": "2026-05-12T20:37:58.000Z"
+      "created_at": "2026-05-12T17:37:58.000Z"
     },
     {
       "id": 46,
@@ -371,7 +371,7 @@
       "category": "Packaging",
       "price": "5400.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:58.083Z"
+      "created_at": "2026-05-12T17:37:58.083Z"
     },
     {
       "id": 47,
@@ -379,7 +379,7 @@
       "category": "Dairy",
       "price": "12300.00",
       "stock": 99,
-      "created_at": "2026-05-12T20:37:58.170Z"
+      "created_at": "2026-05-12T17:37:58.170Z"
     },
     {
       "id": 48,
@@ -387,7 +387,7 @@
       "category": "Beverages",
       "price": "6100.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:58.253Z"
+      "created_at": "2026-05-12T17:37:58.253Z"
     },
     {
       "id": 49,
@@ -395,7 +395,7 @@
       "category": "Cleaning",
       "price": "3300.00",
       "stock": 86,
-      "created_at": "2026-05-12T20:37:58.336Z"
+      "created_at": "2026-05-12T17:37:58.336Z"
     },
     {
       "id": 50,
@@ -403,7 +403,7 @@
       "category": "Baking",
       "price": "11000.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:58.419Z"
+      "created_at": "2026-05-12T17:37:58.419Z"
     },
     {
       "id": 51,
@@ -411,7 +411,7 @@
       "category": "Personal Care",
       "price": "11300.00",
       "stock": 92,
-      "created_at": "2026-05-12T20:37:58.501Z"
+      "created_at": "2026-05-12T17:37:58.501Z"
     },
     {
       "id": 52,
@@ -419,7 +419,7 @@
       "category": "Dairy",
       "price": "9500.00",
       "stock": 63,
-      "created_at": "2026-05-12T20:37:58.584Z"
+      "created_at": "2026-05-12T17:37:58.584Z"
     },
     {
       "id": 53,
@@ -427,7 +427,7 @@
       "category": "Household",
       "price": "25000.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:58.666Z"
+      "created_at": "2026-05-12T17:37:58.666Z"
     },
     {
       "id": 54,
@@ -435,7 +435,7 @@
       "category": "Packaging",
       "price": "3300.00",
       "stock": 70,
-      "created_at": "2026-05-12T20:37:58.749Z"
+      "created_at": "2026-05-12T17:37:58.749Z"
     },
     {
       "id": 55,
@@ -443,7 +443,7 @@
       "category": "Dry Goods",
       "price": "4500.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:58.839Z"
+      "created_at": "2026-05-12T17:37:58.839Z"
     },
     {
       "id": 56,
@@ -451,7 +451,7 @@
       "category": "Personal Care",
       "price": "12900.00",
       "stock": 99,
-      "created_at": "2026-05-12T20:37:58.921Z"
+      "created_at": "2026-05-12T17:37:58.921Z"
     },
     {
       "id": 57,
@@ -459,7 +459,7 @@
       "category": "Dry Goods",
       "price": "3000.00",
       "stock": 88,
-      "created_at": "2026-05-12T20:37:59.007Z"
+      "created_at": "2026-05-12T17:37:59.007Z"
     },
     {
       "id": 58,
@@ -467,7 +467,7 @@
       "category": "Household",
       "price": "10000.00",
       "stock": 76,
-      "created_at": "2026-05-12T20:37:59.096Z"
+      "created_at": "2026-05-12T17:37:59.096Z"
     },
     {
       "id": 59,
@@ -475,7 +475,7 @@
       "category": "Cleaning",
       "price": "9800.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:59.180Z"
+      "created_at": "2026-05-12T17:37:59.180Z"
     },
     {
       "id": 60,
@@ -483,7 +483,7 @@
       "category": "Beverages",
       "price": "20000.00",
       "stock": 96,
-      "created_at": "2026-05-12T20:37:59.262Z"
+      "created_at": "2026-05-12T17:37:59.262Z"
     },
     {
       "id": 61,
@@ -491,7 +491,7 @@
       "category": "Canned Goods",
       "price": "4200.00",
       "stock": 99,
-      "created_at": "2026-05-12T20:37:59.354Z"
+      "created_at": "2026-05-12T17:37:59.354Z"
     },
     {
       "id": 62,
@@ -499,7 +499,7 @@
       "category": "Oils & Cooking",
       "price": "14900.00",
       "stock": 58,
-      "created_at": "2026-05-12T20:37:59.438Z"
+      "created_at": "2026-05-12T17:37:59.438Z"
     },
     {
       "id": 63,
@@ -507,7 +507,7 @@
       "category": "Beverages",
       "price": "5300.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:59.520Z"
+      "created_at": "2026-05-12T17:37:59.520Z"
     },
     {
       "id": 64,
@@ -515,7 +515,7 @@
       "category": "Dry Goods",
       "price": "13500.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:59.604Z"
+      "created_at": "2026-05-12T17:37:59.604Z"
     },
     {
       "id": 65,
@@ -523,7 +523,7 @@
       "category": "Canned Goods",
       "price": "3800.00",
       "stock": 996,
-      "created_at": "2026-05-12T20:37:59.686Z"
+      "created_at": "2026-05-12T17:37:59.686Z"
     },
     {
       "id": 66,
@@ -531,7 +531,7 @@
       "category": "Beverages",
       "price": "9200.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:59.770Z"
+      "created_at": "2026-05-12T17:37:59.770Z"
     },
     {
       "id": 67,
@@ -539,7 +539,7 @@
       "category": "Packaging",
       "price": "6000.00",
       "stock": 94,
-      "created_at": "2026-05-12T20:37:59.857Z"
+      "created_at": "2026-05-12T17:37:59.857Z"
     },
     {
       "id": 68,
@@ -547,7 +547,7 @@
       "category": "Other",
       "price": "14500.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:37:59.939Z"
+      "created_at": "2026-05-12T17:37:59.939Z"
     },
     {
       "id": 69,
@@ -555,7 +555,7 @@
       "category": "Cleaning",
       "price": "1300.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:00.021Z"
+      "created_at": "2026-05-12T17:38:00.021Z"
     },
     {
       "id": 70,
@@ -563,7 +563,7 @@
       "category": "Dry Goods",
       "price": "7500.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:00.102Z"
+      "created_at": "2026-05-12T17:38:00.102Z"
     },
     {
       "id": 71,
@@ -571,7 +571,7 @@
       "category": "Canned Goods",
       "price": "4500.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:00.183Z"
+      "created_at": "2026-05-12T17:38:00.183Z"
     },
     {
       "id": 72,
@@ -579,7 +579,7 @@
       "category": "Packaging",
       "price": "13000.00",
       "stock": 98,
-      "created_at": "2026-05-12T20:38:00.271Z"
+      "created_at": "2026-05-12T17:38:00.271Z"
     },
     {
       "id": 73,
@@ -587,7 +587,7 @@
       "category": "Cleaning",
       "price": "1100.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:00.353Z"
+      "created_at": "2026-05-12T17:38:00.353Z"
     },
     {
       "id": 74,
@@ -595,7 +595,7 @@
       "category": "Personal Care",
       "price": "6500.00",
       "stock": 99,
-      "created_at": "2026-05-12T20:38:00.440Z"
+      "created_at": "2026-05-12T17:38:00.440Z"
     },
     {
       "id": 75,
@@ -603,7 +603,7 @@
       "category": "Packaging",
       "price": "12000.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:00.523Z"
+      "created_at": "2026-05-12T17:38:00.523Z"
     },
     {
       "id": 76,
@@ -611,7 +611,7 @@
       "category": "Packaging",
       "price": "3600.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:00.605Z"
+      "created_at": "2026-05-12T17:38:00.605Z"
     },
     {
       "id": 77,
@@ -619,7 +619,7 @@
       "category": "Packaging",
       "price": "3000.00",
       "stock": 73,
-      "created_at": "2026-05-12T20:38:00.687Z"
+      "created_at": "2026-05-12T17:38:00.687Z"
     },
     {
       "id": 78,
@@ -627,7 +627,7 @@
       "category": "Packaging",
       "price": "3000.00",
       "stock": 84,
-      "created_at": "2026-05-12T20:38:00.769Z"
+      "created_at": "2026-05-12T17:38:00.769Z"
     },
     {
       "id": 79,
@@ -635,7 +635,7 @@
       "category": "Dry Goods",
       "price": "3500.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:00.853Z"
+      "created_at": "2026-05-12T17:38:00.853Z"
     },
     {
       "id": 80,
@@ -643,7 +643,7 @@
       "category": "Cleaning",
       "price": "0.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:00.935Z"
+      "created_at": "2026-05-12T17:38:00.935Z"
     },
     {
       "id": 81,
@@ -651,7 +651,7 @@
       "category": "Cleaning",
       "price": "4000.00",
       "stock": 1000,
-      "created_at": "2026-05-12T20:38:01.018Z"
+      "created_at": "2026-05-12T17:38:01.018Z"
     },
     {
       "id": 82,
@@ -659,7 +659,7 @@
       "category": "Cleaning",
       "price": "8900.00",
       "stock": 99,
-      "created_at": "2026-05-12T20:38:01.098Z"
+      "created_at": "2026-05-12T17:38:01.098Z"
     },
     {
       "id": 83,
@@ -667,7 +667,7 @@
       "category": "Packaging",
       "price": "1600.00",
       "stock": 81,
-      "created_at": "2026-05-12T20:38:01.180Z"
+      "created_at": "2026-05-12T17:38:01.180Z"
     },
     {
       "id": 84,
@@ -675,7 +675,7 @@
       "category": "Packaging",
       "price": "1600.00",
       "stock": 6000,
-      "created_at": "2026-05-12T20:38:01.262Z"
+      "created_at": "2026-05-12T17:38:01.262Z"
     },
     {
       "id": 85,
@@ -683,7 +683,7 @@
       "category": "Beverages",
       "price": "3400.00",
       "stock": 97,
-      "created_at": "2026-05-12T20:38:01.351Z"
+      "created_at": "2026-05-12T17:38:01.351Z"
     },
     {
       "id": 86,
@@ -691,7 +691,7 @@
       "category": "Beverages",
       "price": "3400.00",
       "stock": 53,
-      "created_at": "2026-05-12T20:38:01.433Z"
+      "created_at": "2026-05-12T17:38:01.433Z"
     },
     {
       "id": 87,
@@ -699,7 +699,7 @@
       "category": "Household",
       "price": "31000.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:01.517Z"
+      "created_at": "2026-05-12T17:38:01.517Z"
     },
     {
       "id": 88,
@@ -707,7 +707,7 @@
       "category": "Household",
       "price": "24000.00",
       "stock": 96,
-      "created_at": "2026-05-12T20:38:01.603Z"
+      "created_at": "2026-05-12T17:38:01.603Z"
     },
     {
       "id": 89,
@@ -715,7 +715,7 @@
       "category": "Household",
       "price": "14000.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:01.684Z"
+      "created_at": "2026-05-12T17:38:01.684Z"
     },
     {
       "id": 90,
@@ -723,7 +723,7 @@
       "category": "Packaging",
       "price": "0.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:01.766Z"
+      "created_at": "2026-05-12T17:38:01.766Z"
     },
     {
       "id": 91,
@@ -731,7 +731,7 @@
       "category": "Dry Goods",
       "price": "0.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:01.857Z"
+      "created_at": "2026-05-12T17:38:01.857Z"
     },
     {
       "id": 92,
@@ -739,7 +739,7 @@
       "category": "Canned Goods",
       "price": "4200.00",
       "stock": 99,
-      "created_at": "2026-05-12T20:38:01.940Z"
+      "created_at": "2026-05-12T17:38:01.940Z"
     },
     {
       "id": 93,
@@ -747,7 +747,7 @@
       "category": "Condiments",
       "price": "4100.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:02.023Z"
+      "created_at": "2026-05-12T17:38:02.023Z"
     },
     {
       "id": 94,
@@ -755,7 +755,7 @@
       "category": "Condiments",
       "price": "5000.00",
       "stock": 97,
-      "created_at": "2026-05-12T20:38:02.106Z"
+      "created_at": "2026-05-12T17:38:02.106Z"
     },
     {
       "id": 95,
@@ -763,7 +763,7 @@
       "category": "Oils & Cooking",
       "price": "11500.00",
       "stock": 99,
-      "created_at": "2026-05-12T20:38:02.190Z"
+      "created_at": "2026-05-12T17:38:02.190Z"
     },
     {
       "id": 96,
@@ -771,7 +771,7 @@
       "category": "Canned Goods",
       "price": "5600.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:02.275Z"
+      "created_at": "2026-05-12T17:38:02.275Z"
     },
     {
       "id": 97,
@@ -779,7 +779,7 @@
       "category": "Beverages",
       "price": "3900.00",
       "stock": 78,
-      "created_at": "2026-05-12T20:38:02.383Z"
+      "created_at": "2026-05-12T17:38:02.383Z"
     },
     {
       "id": 98,
@@ -787,7 +787,7 @@
       "category": "Canned Goods",
       "price": "4800.00",
       "stock": 100,
-      "created_at": "2026-05-12T20:38:02.473Z"
+      "created_at": "2026-05-12T17:38:02.473Z"
     },
     {
       "id": 99,
@@ -795,7 +795,7 @@
       "category": "Packaging",
       "price": "3600.00",
       "stock": 86,
-      "created_at": "2026-05-12T20:38:02.555Z"
+      "created_at": "2026-05-12T17:38:02.555Z"
     },
     {
       "id": 100,
@@ -803,7 +803,7 @@
       "category": "Dairy",
       "price": "5500.00",
       "stock": 60,
-      "created_at": "2026-05-12T20:38:02.639Z"
+      "created_at": "2026-05-12T17:38:02.639Z"
     },
     {
       "id": 101,
@@ -811,7 +811,7 @@
       "category": "Dry Goods",
       "price": "14800.00",
       "stock": 99,
-      "created_at": "2026-05-12T20:38:02.725Z"
+      "created_at": "2026-05-12T17:38:02.725Z"
     },
     {
       "id": 102,
@@ -819,7 +819,7 @@
       "category": "Packaging",
       "price": "3900.00",
       "stock": 52,
-      "created_at": "2026-05-12T20:38:02.808Z"
+      "created_at": "2026-05-12T17:38:02.808Z"
     }
   ],
   "orders": []
