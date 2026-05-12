@@ -3,7 +3,8 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
-require('dotenv').config();
+// override: true so .env values win over any empty shell env vars
+require('dotenv').config({ override: true });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -655,7 +656,18 @@ app.post('/api/scan-list', async (req, res) => {
     });
   } catch (err) {
     console.error('scan-list error:', err);
-    res.status(500).json({ error: err?.message || 'Scan failed' });
+    const raw = err?.message || '';
+    let friendly = 'Scan failed. Try again with a clearer photo.';
+    if (/credit balance/i.test(raw)) {
+      friendly = 'Anthropic account is out of credits. Add credits at console.anthropic.com → Billing.';
+    } else if (/rate.?limit|429/i.test(raw)) {
+      friendly = 'Too many scans at once — wait a few seconds and try again.';
+    } else if (/api[_ ]?key|401|authentication/i.test(raw)) {
+      friendly = 'Anthropic API key is invalid or missing. Check ANTHROPIC_API_KEY in Render env vars.';
+    } else if (/timeout/i.test(raw)) {
+      friendly = 'The scan timed out. Try a smaller / clearer photo.';
+    }
+    res.status(500).json({ error: friendly });
   }
 });
 
